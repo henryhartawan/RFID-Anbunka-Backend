@@ -1,0 +1,174 @@
+﻿using Microsoft.AspNetCore.Mvc;
+using OfficeOpenXml;
+using RFIDP2P3_API.Models;
+using System.Data;
+using System.Data.SqlClient;
+
+namespace RFIDP2P3_API.Controllers
+{
+	[Route("api/[controller]/[action]")]
+	[ApiController]
+	public class MasterPartOrderController : Controller
+	{
+		private readonly string _configuration;
+		private string? remarks = "";
+
+		public MasterPartOrderController(IConfiguration configuration)
+		{
+			_configuration = configuration.GetConnectionString("DefaultConnection");
+		}
+
+		[HttpPost]
+		public ActionResult<IEnumerable<MasterPartOrder>> INQ()
+		{
+			List<MasterPartOrder> PartOrder = new();
+
+			using (SqlConnection conn = new SqlConnection(_configuration))
+			using (SqlCommand cmd = new SqlCommand("sp_M_Part_Order_Sel", conn))
+			{
+				cmd.CommandType = CommandType.StoredProcedure;
+				conn.Open();
+				SqlDataReader sdr = cmd.ExecuteReader();
+
+				while (sdr.Read())
+				{
+                    PartOrder.Add(new MasterPartOrder
+                    {
+                        PartOrderID = sdr["PartOrderID"].ToString(),
+                        PlantCode = sdr["PlantCode"].ToString(),
+                        SupplierCode = sdr["SupplierCode"].ToString(),
+                        Supplier = sdr["Supplier"].ToString(),
+                        PartNumber = sdr["PartNumber"].ToString(),
+                        PartName = sdr["PartName"].ToString(),
+                        JobNo = sdr["JobNo"].ToString(),
+                        QtyPerBox = sdr["QtyPerBox"].ToString(),
+                        UOM = sdr["UOM"].ToString(),
+                        PartType = sdr["PartType"].ToString(),
+                        BoxType = sdr["BoxType"].ToString(),
+                        WeightGross = sdr["WeightGross"].ToString(),
+                        AllowanceDeviasi = sdr["AllowanceDeviasi"].ToString(),
+                        QtyBoxPerM3 = sdr["QtyBoxPerM3"].ToString(),
+                        RatioGrade = sdr["RatioGrade"].ToString(),
+                        PartOrderStatus = sdr["PartOrderStatus"].ToString(),
+						LastUpdate = sdr["DateUpdate"].ToString(),
+						UserUpdate = sdr["UserUpdate"].ToString(),
+						Remarks = sdr["Remarks"].ToString()
+                    });
+				}
+				conn.Close();
+			}
+			return PartOrder;
+		}
+
+		[HttpPost]
+		public ActionResult<IEnumerable<MasterPartOrder>> INS(MasterPartOrder partOrder)
+		{
+			using (SqlConnection conn = new SqlConnection(_configuration))
+			using (SqlCommand cmd = new SqlCommand("sp_M_Part_Order_Ins", conn))
+			{
+				cmd.CommandType = CommandType.StoredProcedure;
+				cmd.Parameters.Add("@Remarks", SqlDbType.VarChar, 100).Direction = ParameterDirection.Output;
+
+				cmd.Parameters.Add(new("@IUType", partOrder.IUType));
+				cmd.Parameters.Add(new("@PartOrderID", partOrder.PartOrderID));
+				cmd.Parameters.Add(new("@PlantCode", partOrder.PlantCode));
+                cmd.Parameters.Add(new("@SupplierCode", partOrder.SupplierCode));
+                cmd.Parameters.Add(new("@PartNumber", partOrder.PartNumber));
+                cmd.Parameters.Add(new("@PartName", partOrder.PartName));
+                cmd.Parameters.Add(new("@JobNo", partOrder.JobNo));
+                cmd.Parameters.Add(new("@QtyPerBox", partOrder.QtyPerBox));
+                cmd.Parameters.Add(new("@UOM", partOrder.UOM));
+                cmd.Parameters.Add(new("@PartType", partOrder.PartType));
+                cmd.Parameters.Add(new("@BoxType", partOrder.BoxType));
+                cmd.Parameters.Add(new("@WeightGross", partOrder.WeightGross));
+                cmd.Parameters.Add(new("@AllowanceDeviasi", partOrder.AllowanceDeviasi));
+                cmd.Parameters.Add(new("@QtyBoxPerM3", partOrder.QtyBoxPerM3));
+                cmd.Parameters.Add(new("@RatioGrade", partOrder.RatioGrade));
+                cmd.Parameters.Add(new("@UserLogin", partOrder.UserLogin));
+
+                conn.Open();
+				cmd.ExecuteNonQuery();
+				remarks = Convert.ToString(cmd.Parameters["@Remarks"].Value);
+				conn.Close();
+			}
+			if (remarks != "") return BadRequest(remarks);
+			else return Ok("success");
+		}
+
+		[HttpPost]
+		public ActionResult<IEnumerable<MasterPartOrder>> DEL(MasterPartOrder partOrder)
+		{
+			using (SqlConnection conn = new SqlConnection(_configuration))
+			using (SqlCommand cmd = new SqlCommand("sp_M_Part_Order_Del", conn))
+			{
+				cmd.CommandType = CommandType.StoredProcedure;
+				cmd.Parameters.Add("@Remarks", SqlDbType.VarChar, 100).Direction = ParameterDirection.Output;
+
+				cmd.Parameters.Add(new("@PartOrderID", partOrder.PartOrderID));
+
+                conn.Open();
+				cmd.ExecuteNonQuery();
+				remarks = Convert.ToString(cmd.Parameters["@Remarks"].Value);
+				conn.Close();
+			}
+			if (remarks != "") return BadRequest(remarks);
+			else return Ok("success");
+        }
+
+        [HttpPost]
+        public ActionResult<IEnumerable<MasterPartOrder>> ACT(MasterPartOrder partOrder)
+        {
+            using (SqlConnection conn = new SqlConnection(_configuration))
+            using (SqlCommand cmd = new SqlCommand("sp_M_Part_Order_Act", conn))
+            {
+                cmd.CommandType = CommandType.StoredProcedure;
+                cmd.Parameters.Add("@Remarks", SqlDbType.VarChar, 100).Direction = ParameterDirection.Output;
+
+                cmd.Parameters.Add(new("@PartOrderID", partOrder.PartOrderID));
+                cmd.Parameters.Add(new("@UserLogin", partOrder.UserLogin));
+
+                conn.Open();
+                cmd.ExecuteNonQuery();
+                remarks = Convert.ToString(cmd.Parameters["@Remarks"].Value);
+                conn.Close();
+            }
+            if (remarks != "") return BadRequest(remarks);
+            else return Ok("success");
+        }
+
+        [HttpPost]
+        public async Task<List<RemarksNote>> Upload(IFormFile file, string? UID)
+        {
+            var list = new List<RemarksNote>();
+            using (var stream = new MemoryStream())
+            {
+                await file.CopyToAsync(stream);
+                using (var package = new ExcelPackage(stream))
+                {
+                    BusinessObject b = new();
+                    string remarks = b.UploadXLS(package, UID, _configuration);
+                    if ("success" != remarks)
+                    {
+                        b.WriteLog(remarks, "XLSRemarks");
+                    }
+                    else
+                    {
+                        object result;
+                        using (SqlConnection conn = new(_configuration))
+                        {
+                            conn.Open();
+                            SqlCommand cmd = new("exec sp_M_Part_Order_Upload @EntryUser", conn);
+                            cmd.CommandType = CommandType.Text;
+                            cmd.Parameters.Add(new("@EntryUser", UID));
+                            result = cmd.ExecuteScalar();
+                            conn.Close();
+                        }
+                        remarks = result.ToString();
+                    }
+                    list.Add(new RemarksNote { Remarks = remarks });
+                    return list;
+                }
+            }
+        }
+    }
+}
