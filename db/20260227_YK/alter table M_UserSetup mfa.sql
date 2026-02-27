@@ -1,0 +1,5 @@
+ALTER TABLE M_UserSetup
+ADD RequireMfa bit
+
+ALTER TABLE M_UserSetup
+ADD Email NVARCHAR(100)
