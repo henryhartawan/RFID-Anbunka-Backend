@@ -261,6 +261,19 @@ namespace RFIDP2P3_API.Controllers
                                 IdValue = sdr["BuildingID"].ToString(),
                                 ViewValue = sdr["Building"].ToString()
                             }); break;
+                        case "LinePlant":
+                            ContainerObj.Add(new DropDown
+                            {
+                                Plant = sdr["PlantCode"].ToString(),
+                                IdValue = sdr["LineOrderCode"].ToString(),
+                                ViewValue = sdr["LineOrder"].ToString()
+                            }); break;
+                        case "JobNo":
+                            ContainerObj.Add(new DropDown
+                            {
+                                IdValue = sdr["JobNo"].ToString(),
+                                ViewValue = sdr["JobNo"].ToString()
+                            }); break;
                     }
 				}
 				conn.Close();

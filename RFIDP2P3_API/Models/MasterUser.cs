@@ -19,5 +19,7 @@ namespace RFIDP2P3_API.Models
 		public string? DeptName { get; set; }
 		public string? SectionName { get; set; }
 		public string? BuildingName { get; set; }
-	}
+        public string? SupplierCode { get; set; }
+        public string? Supplier { get; set; }
+    }
 }

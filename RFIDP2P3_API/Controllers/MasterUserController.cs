@@ -47,9 +47,10 @@ namespace RFIDP2P3_API.Controllers
 						PlantName = sdr["PlantName"].ToString(),
                         DeptName = sdr["DeptName"].ToString(),
                         SectionName = sdr["SectionName"].ToString(),
-						BuildingName = sdr["BuildingName"].ToString()
-
-					});
+						BuildingName = sdr["BuildingName"].ToString(),
+                        SupplierCode = sdr["SupplierCode"].ToString(),
+                        Supplier = sdr["Supplier"].ToString()
+                    });
                 }
                 conn.Close();
             }
@@ -101,7 +102,8 @@ namespace RFIDP2P3_API.Controllers
 				cmd.Parameters.Add(new("@DeptId", user.DeptId));
 				cmd.Parameters.Add(new("@SectionId", user.SectionId));
 				cmd.Parameters.Add(new("@BuildingId", user.BuildingId));
-				cmd.Parameters.Add(new("@UserLogin", user.UserLogin));
+                cmd.Parameters.Add(new("@SupplierCode", user.SupplierCode));
+                cmd.Parameters.Add(new("@UserLogin", user.UserLogin));
 
 				conn.Open();
 				cmd.ExecuteNonQuery();
