@@ -8,6 +8,7 @@
 		public string? UserGroup_Id { get; set; }
 		public string? UserGroup_Name { get; set; }
 		public string? PlantId { get; set; }
+        public string? MFAStatus { get; set; }
         public List<Privilege>? Privileges { get; set; }
     }
 }

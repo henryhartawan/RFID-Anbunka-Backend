@@ -1,23 +1,22 @@
 using RFIDP2P3_API.Middleware;
 using Microsoft.OpenApi.Models;
+using RFIDP2P3_API.Models;
+using RFIDP2P3_API.Services.Implementations;
+using RFIDP2P3_API.Services.Interfaces;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddCors(options => 
 {
-    //options.AddPolicy(name: MyAllowSpecificOrigins,
-    //  policy =>
-    //  {
-    //	  policy.WithOrigins("https://localhost:5144");
-    //  });
-    //options.AddPolicy("AllowOrigin", options => options.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader());
-    options.AddDefaultPolicy(
-        builder =>
+    
+    options.AddPolicy("AllowSpecificOrigin",
+        policy =>
         {
-            //builder.AllowAnyHeader().AllowAnyMethod().AllowCredentials().SetIsOriginAllowed(origin => true).AllowAnyOrigin();
-            builder.AllowAnyHeader().AllowAnyMethod().SetIsOriginAllowed(origin => true).AllowAnyOrigin();
-        }
-    );
+            policy.WithOrigins("https://localhost:7144", "https://127.0.0.1:7144") 
+                .AllowAnyHeader()
+                .AllowAnyMethod()
+                .AllowCredentials();
+        });
 }
 );
 // Add services to the container.
@@ -26,6 +25,14 @@ builder.Services.AddControllers();
 builder.Services.AddControllers().AddJsonOptions(
      options => { options.JsonSerializerOptions.PropertyNamingPolicy = null; }
  );
+
+builder.Services.Configure<EmailSettings>(builder.Configuration.GetSection("EmailSettings"));
+builder.Services.AddScoped<IMfaService, MfaService>();
+builder.Services.AddScoped<IEmailService, EmailService>();
+//Rate Limit
+builder.Services.AddSingleton<System.Collections.Concurrent.ConcurrentDictionary<string, (
+    int Count, System.DateTime WindowStartUtc, System.DateTime LastHitUtc)>>();
+
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(options =>
@@ -67,7 +74,7 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
-app.UseCors();
+app.UseCors("AllowSpecificOrigin");
 app.UseMiddleware<APIKeyMiddleware>();
 
 app.UseAuthentication();

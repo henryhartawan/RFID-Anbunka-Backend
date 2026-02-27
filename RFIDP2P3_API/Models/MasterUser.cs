@@ -21,5 +21,7 @@ namespace RFIDP2P3_API.Models
 		public string? BuildingName { get; set; }
         public string? SupplierCode { get; set; }
         public string? Supplier { get; set; }
+        public string? Email { get; set; }
+        public bool? RequireMfa { get; set; }
     }
 }

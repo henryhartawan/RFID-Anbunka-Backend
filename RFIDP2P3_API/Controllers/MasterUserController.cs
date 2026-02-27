@@ -49,7 +49,9 @@ namespace RFIDP2P3_API.Controllers
                         SectionName = sdr["SectionName"].ToString(),
 						BuildingName = sdr["BuildingName"].ToString(),
                         SupplierCode = sdr["SupplierCode"].ToString(),
-                        Supplier = sdr["Supplier"].ToString()
+                        Supplier = sdr["Supplier"].ToString(),
+                        Email = sdr["Email"].ToString(),
+                        RequireMfa = sdr["RequireMfa"] != DBNull.Value ? Convert.ToBoolean(sdr["RequireMfa"]) : (bool?)null
                     });
                 }
                 conn.Close();
@@ -97,12 +99,14 @@ namespace RFIDP2P3_API.Controllers
 				cmd.Parameters.Add(new("@UserId", user.PIC_ID));
                 cmd.Parameters.Add(new("@UserName", user.PIC_Name));
                 cmd.Parameters.Add(new("@Password", passwordHash));
+                cmd.Parameters.Add(new("@Email", user.Email));
                 cmd.Parameters.Add(new("@UserGroupId", user.UserGroup_Id));
 				cmd.Parameters.Add(new("@PlantID", user.PlantID));
 				cmd.Parameters.Add(new("@DeptId", user.DeptId));
 				cmd.Parameters.Add(new("@SectionId", user.SectionId));
 				cmd.Parameters.Add(new("@BuildingId", user.BuildingId));
                 cmd.Parameters.Add(new("@SupplierCode", user.SupplierCode));
+                cmd.Parameters.Add(new("@RequireMfa", user.RequireMfa ?? false));
                 cmd.Parameters.Add(new("@UserLogin", user.UserLogin));
 
 				conn.Open();

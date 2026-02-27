@@ -35,6 +35,7 @@ namespace RFIDP2P3_API.Controllers
 				string? UserGroup_Id = "";
 				string? UserGroup_Name = "";
 				string? PlantId = "";
+				string? MFAStatus = "";
 
                 List<User> userLogin = new();
 
@@ -46,6 +47,7 @@ namespace RFIDP2P3_API.Controllers
 					UserGroup_Id = sdr["UserGroupID"].ToString();
 					UserGroup_Name = sdr["UserGroupName"].ToString();
 					PlantId = sdr["PlantId"].ToString();
+                    MFAStatus = sdr["MFAStatus"].ToString();
                 }
 
                 if (!sdr.HasRows)
@@ -90,7 +92,8 @@ namespace RFIDP2P3_API.Controllers
 								UserGroup_Id = UserGroup_Id,
 								UserGroup_Name = UserGroup_Name,
 								PlantId = PlantId,
-                                Privileges = privileges
+                                Privileges = privileges,
+                                MFAStatus = MFAStatus
                             });
                         }
                         sdr1.Close();
