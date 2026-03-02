@@ -405,3 +405,7 @@ FodyWeavers.xsd
 
 # Backup Files
 *.bak
+
+# Ignore local secrets files
+appsettings.Development.json
+appsettings.Local.json
