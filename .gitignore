@@ -407,5 +407,4 @@ FodyWeavers.xsd
 *.bak
 
 # Ignore local secrets files
-appsettings.Development.json
-appsettings.Local.json
+RFIDP2P3_API/appsettings.json
