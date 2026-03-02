@@ -12,7 +12,7 @@ builder.Services.AddCors(options =>
     options.AddPolicy("AllowSpecificOrigin",
         policy =>
         {
-            policy.WithOrigins("https://localhost:7144", "https://127.0.0.1:7144") 
+            policy.WithOrigins("https://localhost:7144", "https://127.0.0.1:7144", "https://trial-ics-kep.daihatsu.astra.co.id") 
                 .AllowAnyHeader()
                 .AllowAnyMethod()
                 .AllowCredentials();
