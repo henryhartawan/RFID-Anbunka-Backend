@@ -14,7 +14,10 @@
   <ItemGroup>
     <PackageReference Include="BarCode" Version="2023.9.45" />
     <PackageReference Include="BCrypt.Net-Next" Version="4.0.3" />
+    <PackageReference Include="ClosedXML" Version="0.105.0" />
     <PackageReference Include="EPPlus" Version="6.2.9" />
+    <PackageReference Include="ExcelDataReader" Version="3.8.0" />
+    <PackageReference Include="ExcelDataReader.DataSet" Version="3.8.0" />
     <PackageReference Include="IronOcr" Version="2023.9.4" />
     <PackageReference Include="Otp.NET" Version="1.4.1" />
     <PackageReference Include="QRCoder" Version="1.7.0" />

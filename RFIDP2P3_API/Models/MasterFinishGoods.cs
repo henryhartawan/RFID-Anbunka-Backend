@@ -6,6 +6,13 @@
         public string? UniqueNumber { get; set; }
         public string? PartNumber { get; set; }
         public string? PartName { get; set; }
+        public string? EngineType { get; set; }
+        public string? EngineBase { get; set; }
+        public string? Transmission { get; set; }
+        public string? Destination { get; set; }
+        public string? Country { get; set; }
+        public string? EngineGrouping { get; set; }
+        
         public string? QtyPerBox { get; set; }
         public string? UOM { get; set; }
         public string? BoxType { get; set; }

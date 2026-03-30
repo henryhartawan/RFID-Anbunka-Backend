@@ -13,5 +13,6 @@
         public string? Dock { get; set; }
         public string? Route { get; set; }
         public string? ExCore { get; set; }
+        public string? Model { get; set; }
     }
 }

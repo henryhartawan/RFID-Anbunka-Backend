@@ -36,6 +36,12 @@ namespace RFIDP2P3_API.Controllers
                         UniqueNumber = sdr["UniqueNumber"].ToString(),
                         PartNumber = sdr["PartNumber"].ToString(),
                         PartName = sdr["PartName"].ToString(),
+                        EngineType = sdr["EngineType"].ToString(),
+                        EngineBase = sdr["EngineBase"].ToString(),
+                        Transmission = sdr["Transmission"].ToString(),
+                        Destination = sdr["Destination"].ToString(),
+                        Country = sdr["Country"].ToString(),
+                        EngineGrouping = sdr["EngineGrouping"].ToString(),
                         QtyPerBox = sdr["QtyPerBox"].ToString(),
                         UOM = sdr["UOM"].ToString(),
                         BoxType = sdr["BoxType"].ToString(),
@@ -64,6 +70,12 @@ namespace RFIDP2P3_API.Controllers
 				cmd.Parameters.Add(new("@UniqueNumber", finishGoods.UniqueNumber));
                 cmd.Parameters.Add(new("@PartNumber", finishGoods.PartNumber));
                 cmd.Parameters.Add(new("@PartName", finishGoods.PartName));
+                cmd.Parameters.Add(new("@EngineType", finishGoods.EngineType));
+                cmd.Parameters.Add(new("@EngineBase", finishGoods.EngineBase));
+                cmd.Parameters.Add(new("@Transmission", finishGoods.Transmission));
+                cmd.Parameters.Add(new("@Destination", finishGoods.Destination));
+                cmd.Parameters.Add(new("@Country", finishGoods.Country));
+                cmd.Parameters.Add(new("@EngineGrouping", finishGoods.EngineGrouping));
                 cmd.Parameters.Add(new("@QtyPerBox", finishGoods.QtyPerBox));
                 cmd.Parameters.Add(new("@UOM", finishGoods.UOM));
                 cmd.Parameters.Add(new("@BoxType", finishGoods.BoxType));

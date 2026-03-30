@@ -274,6 +274,13 @@ namespace RFIDP2P3_API.Controllers
                                 IdValue = sdr["JobNo"].ToString(),
                                 ViewValue = sdr["JobNo"].ToString()
                             }); break;
+						case "UniqueModel":
+							ContainerObj.Add(new DropDown
+							{
+								IdValue = sdr["UniqueNumber"].ToString(),
+								ViewValue = sdr["FinishGoods"].ToString(),
+								Model = sdr["Model"].ToString()
+							}); break;
                     }
 				}
 				conn.Close();
