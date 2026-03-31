@@ -1,0 +1,22 @@
+USE [RFIDP2P3_DB]
+GO
+/****** Object:  Table [dbo].[M_OEE_TT]    Script Date: 16/03/2026 23:36:06 ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [dbo].[M_OEE_TT_Future](
+	[ExCore] [int] IDENTITY(1,1) NOT NULL,
+	[Periode] VARCHAR(7) NOT NULL,
+	[LineOrderCode] [nvarchar](50) NOT NULL,
+	[OEE] [numeric](18, 2) NOT NULL,
+	[CT] [numeric](18, 2) NOT NULL,
+	[OEETTStatus] [nvarchar](1) NULL,
+	[UserUpdate] [varchar](50) NULL,
+	[DateUpdate] [datetime] NULL,
+ CONSTRAINT [PK_M_OEE_TT_Future] PRIMARY KEY CLUSTERED 
+(
+	[ExCore] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, FILLFACTOR = 90, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+) ON [PRIMARY]
+GO
