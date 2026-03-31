@@ -34,7 +34,7 @@ public class EmailService : IEmailService
 
             using var mail = new MailMessage
             {
-                From = new MailAddress(_settings.FromEmail, _settings.FromName),
+                From = new MailAddress(_settings.SmtpUser, _settings.FromName),
                 Subject = subject,
                 Body = htmlBody,
                 IsBodyHtml = true

@@ -6,19 +6,20 @@ using RFIDP2P3_API.Services.Interfaces;
 
 var builder = WebApplication.CreateBuilder(args);
 
+var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>();
+
 builder.Services.AddCors(options => 
 {
-    
     options.AddPolicy("AllowSpecificOrigin",
         policy =>
         {
-            policy.WithOrigins("https://localhost:7144", "https://127.0.0.1:7144", "https://trial-ics-kep.daihatsu.astra.co.id") 
+            policy.WithOrigins(allowedOrigins) 
                 .AllowAnyHeader()
                 .AllowAnyMethod()
                 .AllowCredentials();
-        });
-}
-);
+        }
+    );
+});
 // Add services to the container.
 
 builder.Services.AddControllers();
