@@ -1,0 +1,58 @@
+﻿using Microsoft.AspNetCore.Mvc;
+using RFIDP2P3_API.Models;
+using System.Data.SqlClient;
+using System.Data;
+using System.Net.NetworkInformation;
+using OfficeOpenXml;
+
+namespace RFIDP2P3_API.Controllers
+{
+    [Route("api/[controller]/[action]")]
+    [ApiController]
+    public class MonitoringSKIDController : Controller
+    {
+        private readonly string _configuration;
+		private string? remarks = "";
+
+		public MonitoringSKIDController(IConfiguration configuration)
+        {
+            _configuration = configuration.GetConnectionString("DefaultConnection");
+        }
+
+        [HttpPost]
+        public ActionResult<IEnumerable<Dictionary<string, object>>> INQ(MonitoringSKID ms)
+        {
+            var dt = new DataTable();
+
+            using (SqlConnection conn = new SqlConnection(_configuration))
+            using (SqlCommand cmd = new SqlCommand("sp_Inq_Monitoring_SKID", conn))
+            {
+                cmd.CommandType = CommandType.StoredProcedure;
+                cmd.Parameters.Add(new("@DeliveryDate", ms.DeliveryDate));
+                cmd.CommandTimeout = 300;
+                conn.Open();
+
+                using (var da = new SqlDataAdapter(cmd))
+                {
+                    da.Fill(dt);
+                }
+
+                conn.Close();
+            }
+
+            var result = new List<Dictionary<string, object>>();
+
+            foreach (DataRow row in dt.Rows)
+            {
+                var dict = new Dictionary<string, object>();
+                foreach (DataColumn col in dt.Columns)
+                {
+                    dict[col.ColumnName] = row[col];
+                }
+                result.Add(dict);
+            }
+
+            return result;
+        }
+	}
+}
