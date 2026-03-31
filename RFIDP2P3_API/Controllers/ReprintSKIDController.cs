@@ -7,26 +7,26 @@ namespace RFIDP2P3_API.Controllers
 {
     [Route("api/[controller]/[action]")]
     [ApiController]
-    public class ScanBoxLabelController : ControllerBase
+    public class ReprintSKIDController : ControllerBase
     {
         private readonly string _configuration;
         private string? remarks = "";
 
-        public ScanBoxLabelController(IConfiguration configuration)
+        public ReprintSKIDController(IConfiguration configuration)
         {
             _configuration = configuration.GetConnectionString("DefaultConnection");
         }
 
         [HttpPost]
-        public ActionResult<IEnumerable<Dictionary<string,object>>> CheckBox(ScanBoxLabel sbl)
+        public ActionResult<IEnumerable<Dictionary<string,object>>> INQ(ReprintSKID rs)
         {
             var dt = new DataTable();
 
 			using (SqlConnection conn = new SqlConnection(_configuration))
-			using (SqlCommand cmd = new SqlCommand("sp_Inq_Kanban", conn))
+			using (SqlCommand cmd = new SqlCommand("sp_Inq_T_SKID", conn))
 			{
                 cmd.CommandType = CommandType.StoredProcedure;
-                cmd.Parameters.Add(new("@KanbanNo", sbl.KanbanNo));
+                cmd.Parameters.Add(new("@DeliveryDate", rs.DeliveryDate));
                 conn.Open();
                 
                 using (var da = new SqlDataAdapter(cmd))
