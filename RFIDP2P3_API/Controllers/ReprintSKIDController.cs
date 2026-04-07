@@ -51,51 +51,5 @@ namespace RFIDP2P3_API.Controllers
 
             return result;
         }
-
-        [HttpPost]
-        public ActionResult<IEnumerable<GR>> INS(GR gr)
-        {
-            string now = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
-            string idStr = "";
-
-            using (SqlConnection conn = new SqlConnection(_configuration))
-            using (SqlCommand cmd = new SqlCommand("sp_Submit_GR", conn))
-            {
-                conn.Open();
-                cmd.CommandType = CommandType.StoredProcedure;
-                cmd.Parameters.Add("@Remarks", SqlDbType.VarChar, 100).Direction = ParameterDirection.Output;
-
-                cmd.Parameters.Add(new("@GRID", SqlDbType.VarChar, 50));
-                cmd.Parameters.Add(new("@DN_No", SqlDbType.VarChar, 50));
-                cmd.Parameters.Add(new("@PartNo", SqlDbType.VarChar, 50));
-                cmd.Parameters.Add(new("@Qty", SqlDbType.VarChar));
-                cmd.Parameters.Add(new("@EntryDate", SqlDbType.VarChar, 20));
-                cmd.Parameters.Add(new("@UserLogin", SqlDbType.VarChar, 50));
-
-                foreach (var grs in gr.DN)
-                {
-                    cmd.Parameters["@GRID"].Value = idStr;
-                    cmd.Parameters["@DN_No"].Value = gr.DN_No;
-                    cmd.Parameters["@PartNo"].Value = grs.PartNo;
-                    cmd.Parameters["@Qty"].Value = grs.Qty;
-                    cmd.Parameters["@EntryDate"].Value = now;
-                    cmd.Parameters["@UserLogin"].Value = gr.UserLogin;
-
-                    cmd.ExecuteNonQuery();
-                    remarks = Convert.ToString(cmd.Parameters["@Remarks"].Value);
-
-                    if (remarks.Substring(0,7) != "success")
-                    {
-                        conn.Close();
-                        return BadRequest(remarks);
-                    }
-
-                    idStr = remarks.Substring(8);
-                }
-                conn.Close();
-            }
-            if (remarks.Substring(0,7) != "success") return BadRequest(remarks.Substring(6));
-            else return Ok("success");
-        }
     }
 }

@@ -29,7 +29,6 @@ namespace RFIDP2P3_API.Controllers
             {
                 cmd.CommandType = CommandType.StoredProcedure;
                 cmd.Parameters.Add(new("@DeliveryDate", ms.DeliveryDate));
-                cmd.CommandTimeout = 300;
                 conn.Open();
 
                 using (var da = new SqlDataAdapter(cmd))
