@@ -2,6 +2,7 @@
 using RFIDP2P3_API.Models;
 using System.Data.SqlClient;
 using System.Data;
+using System.Collections.Concurrent;
 
 namespace RFIDP2P3_API.Controllers
 {
@@ -12,6 +13,8 @@ namespace RFIDP2P3_API.Controllers
         private readonly string _configuration;
         private string? remarks = "";
 
+        private static readonly ConcurrentDictionary<string, (int Attempts, DateTime LastAttempt)> _failedLoginTracker = new();
+
         public LoginController(IConfiguration configuration)
         {
             _configuration = configuration.GetConnectionString("DefaultConnection");
@@ -20,6 +23,17 @@ namespace RFIDP2P3_API.Controllers
         [HttpPost]
         public ActionResult<IEnumerable<MasterUser>> Index(MasterUser Login)
         {
+            string ip = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "UnknownIP";
+            var now = DateTime.UtcNow;
+
+            if (_failedLoginTracker.TryGetValue(ip, out var entry))
+            {
+                if (entry.Attempts >= 2 && (now - entry.LastAttempt).TotalSeconds < 120)
+                {
+                    var wait = 120 - (int)(now - entry.LastAttempt).TotalSeconds;
+                    return StatusCode(429, new { message = $"Terlalu banyak percobaan login gagal. Coba lagi dalam {wait} detik." });
+                }
+            }
             using (SqlConnection conn = new SqlConnection(_configuration))
             using (SqlCommand cmd = new SqlCommand("sp_UserLogin_Sel", conn))
             {
@@ -54,16 +68,26 @@ namespace RFIDP2P3_API.Controllers
                 {
                     sdr.Close();
                     conn.Close();
+
+                    _failedLoginTracker.AddOrUpdate(ip, (1, now),
+                        (key, old) => (now - old.LastAttempt).TotalSeconds > 120 ? (1, now) : (old.Attempts + 1, now));
+
                     return BadRequest("User not found/not active");
                 }
                 else if (!BCrypt.Net.BCrypt.Verify(Login.password, Pwd))
                 {
                     sdr.Close();
                     conn.Close();
+
+                    _failedLoginTracker.AddOrUpdate(ip, (1, now),
+                        (key, old) => (now - old.LastAttempt).TotalSeconds > 120 ? (1, now) : (old.Attempts + 1, now));
+
                     return BadRequest("Incorrect login/password");
                 }
                 else
                 {
+                    _failedLoginTracker.TryRemove(ip, out _);
+
                     sdr.Close();
 
                     List<Privilege> privileges = new();

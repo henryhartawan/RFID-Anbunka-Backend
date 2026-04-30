@@ -2,8 +2,7 @@
 {
     public class StockFlowGeneral
     {
-        public string? From { get; set; }
-        public string? To { get; set; }
+        public string? Periode { get; set; }
         public string? LineOrderCode { get; set; }
         public string? SupplierCode { get; set; }
     }

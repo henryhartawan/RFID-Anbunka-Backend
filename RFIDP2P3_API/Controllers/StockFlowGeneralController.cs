@@ -29,8 +29,7 @@ namespace RFIDP2P3_API.Controllers
                 SqlCommand cmd  = new SqlCommand("sp_Inq_Stock_Flow_General", conn);
 
                 cmd.CommandType = CommandType.StoredProcedure;
-                cmd.Parameters.Add(new("@From", sfg.From));
-                cmd.Parameters.Add(new("@To", sfg.To));
+                cmd.Parameters.Add(new("@Periode", sfg.Periode));
                 cmd.Parameters.Add(new("@LineOrderCode", sfg.LineOrderCode));
                 cmd.Parameters.Add(new("@SupplierCode", sfg.SupplierCode));
 

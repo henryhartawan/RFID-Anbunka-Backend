@@ -90,12 +90,20 @@ namespace RFIDP2P3_API.Controllers
 			}
 
 			using (SqlConnection conn = new SqlConnection(_configuration))
-			using (SqlCommand cmd = new SqlCommand("sp_UserSetup_Ins", conn))
-			{
+            {
+                conn.Open();
+
+                SqlCommand cmd = new("exec sp_Cek_T_BlockKeyword_Pass @Keyword", conn);
+                cmd.CommandType = CommandType.Text;
+                cmd.Parameters.Add(new("@Keyword", user.password));
+                remarks = cmd.ExecuteScalar().ToString();
+                if (remarks.Substring(0,7) != "allowed") return BadRequest(remarks.Substring(8));
+
+                cmd = new SqlCommand("sp_UserSetup_Ins", conn);
                 cmd.CommandType = CommandType.StoredProcedure;
 				cmd.Parameters.Add("@Remarks", SqlDbType.VarChar, 100).Direction = ParameterDirection.Output;
 
-				cmd.Parameters.Add(new("@IUType", user.IUType));
+                cmd.Parameters.Add(new("@IUType", user.IUType));
 				cmd.Parameters.Add(new("@UserId", user.PIC_ID));
                 cmd.Parameters.Add(new("@UserName", user.PIC_Name));
                 cmd.Parameters.Add(new("@Password", passwordHash));
@@ -109,7 +117,6 @@ namespace RFIDP2P3_API.Controllers
                 cmd.Parameters.Add(new("@RequireMfa", user.RequireMfa ?? false));
                 cmd.Parameters.Add(new("@UserLogin", user.UserLogin));
 
-				conn.Open();
 				cmd.ExecuteNonQuery();
 				remarks = Convert.ToString(cmd.Parameters["@Remarks"].Value);
 				conn.Close();

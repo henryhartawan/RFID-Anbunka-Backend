@@ -61,6 +61,7 @@ namespace RFIDP2P3_API.Controllers
                 cmd.CommandType = CommandType.StoredProcedure;
                 cmd.Parameters.Add(new("@Type", st.Type));
                 cmd.Parameters.Add(new("@TN_No", st.TN_No));
+                cmd.Parameters.Add(new("@UserLogin", st.UserLogin));
 
                 conn.Open();
                 result = cmd.ExecuteScalar();

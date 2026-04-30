@@ -25,7 +25,14 @@ namespace RFIDP2P3_API.Controllers
             using (SqlConnection conn = new(_configuration))
             {
                 conn.Open();
-                SqlCommand cmd = new("exec sp_UserPass_Ins @PIC_ID, @Passwords", conn);
+
+                SqlCommand cmd = new("exec sp_Cek_T_BlockKeyword_Pass @Keyword", conn);
+                cmd.CommandType = CommandType.Text;
+                cmd.Parameters.Add(new("@Keyword", user.password));
+                remarks = cmd.ExecuteScalar().ToString();
+                if (remarks.Substring(0, 7) != "allowed") return BadRequest(remarks.Substring(8));
+
+                cmd = new("exec sp_UserPass_Ins @PIC_ID, @Passwords", conn);
                 cmd.CommandType = CommandType.Text;
                 cmd.Parameters.Add(new("@PIC_ID", user.PIC_ID));
                 cmd.Parameters.Add(new("@Passwords", passwordHash));
