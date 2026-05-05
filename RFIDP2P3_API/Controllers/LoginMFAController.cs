@@ -17,6 +17,7 @@ namespace RFIDP2P3_API.Controllers
 {
     [Route("api/[controller]/[action]")]
     [ApiController]
+    [AllowAnonymous]
     public class LoginMFAController : ControllerBase
     {
         private readonly IMfaService _mfaService;
@@ -30,7 +31,7 @@ namespace RFIDP2P3_API.Controllers
             _config = config;
         }
 
-        [HttpPost] [AllowAnonymous]
+        [HttpPost]
         public async Task<IActionResult> ReadEmail([FromBody] LoginMFA login)
         {
             MfaLogHelper.Info("ReadEmail requested", new { login.UserId });
@@ -50,7 +51,7 @@ namespace RFIDP2P3_API.Controllers
             });
         }
         
-        [HttpPost] [AllowAnonymous]
+        [HttpPost]
         public async Task<IActionResult> SendEmail(
             [FromBody] LoginMFA login,
             [FromServices] AttemptMap sendEmailTracker)
@@ -83,7 +84,7 @@ namespace RFIDP2P3_API.Controllers
             return Ok(new { validation = 0, message = "If the user exists, an OTP has been sent." });
         }
         
-        [HttpPost] [AllowAnonymous]
+        [HttpPost]
         public async Task<IActionResult> CheckOTPEmail(
             [FromBody] LoginMFA login,
             [FromServices] AttemptMap checkOtpEmailTracker)
@@ -143,7 +144,7 @@ namespace RFIDP2P3_API.Controllers
             return Ok(new { status = 1, data = new { imgUrl = "data:image/png;base64," + qrCodeBase64 } });
         }
         
-        [HttpPost][AllowAnonymous]
+        [HttpPost]
         public async Task<IActionResult> CheckAuth(
             [FromBody] LoginMFA login,
             [FromServices] AttemptMap checkAuthTracker)
@@ -217,10 +218,18 @@ namespace RFIDP2P3_API.Controllers
 
             string token = Convert.ToHexString(RandomNumberGenerator.GetBytes(32));
             await _mfaService.UpdateTokenAndLoginStatusAsync(login.UserId, token);
+            
+            var userForJwt = new User { PIC_ID = login.UserId, PIC_Name = login.UserName }; 
+            string jwtString = JwtHelper.GenerateToken(userForJwt, _config);
 
             MfaLogHelper.Info("MFA success, token issued", new { correlationId, login.UserId });
 
-            return Ok(new { status = 1, data = new { url = "/Home/Index" } });
+            return Ok(new
+            {
+                status = 1,
+                token = jwtString,
+                data = new { url = "/Home/Index" }
+            });
         }
         
         private string GenerateDummyMaskedEmail(string userId)
