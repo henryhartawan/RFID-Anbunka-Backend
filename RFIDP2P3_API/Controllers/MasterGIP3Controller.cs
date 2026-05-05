@@ -115,18 +115,19 @@ namespace RFIDP2P3_API.Controllers
 						b.WriteLog(remarks, "XLSRemarks");
 					}
 					else
-					{
-						using (SqlConnection conn = new(_configuration))
+                    {
+                        object result;
+                        using (SqlConnection conn = new(_configuration))
 						{
 							conn.Open();
 							SqlCommand cmd = new("exec sp_M_GIP3_Upload @EntryUser", conn);
 							cmd.CommandType = CommandType.Text;
 							cmd.Parameters.Add(new("@EntryUser", UID));
-							cmd.ExecuteScalar();
+                            result = cmd.ExecuteScalar();
 							conn.Close();
-						}
-
-					}
+                        }
+                        remarks = result.ToString();
+                    }
 					list.Add(new RemarksNote { Remarks = remarks });
 					return list;
 				}
