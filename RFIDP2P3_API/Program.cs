@@ -1,13 +1,9 @@
-using System.Text;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Mvc.Authorization;
+using RFIDP2P3_API.Middleware;
 using Microsoft.OpenApi.Models;
 using RFIDP2P3_API.Models;
 using RFIDP2P3_API.Services.Implementations;
 using RFIDP2P3_API.Services.Interfaces;
 using Microsoft.AspNetCore.HttpOverrides;
-using Microsoft.IdentityModel.Tokens;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -27,17 +23,10 @@ builder.Services.AddCors(options =>
 });
 // Add services to the container.
 
-var requireAuthPolicy = new AuthorizationPolicyBuilder()
-    .RequireAuthenticatedUser()
-    .Build();
-
-builder.Services.AddControllers(options =>
-{
-    options.Filters.Add(new AuthorizeFilter(requireAuthPolicy)); 
-}).AddJsonOptions(options => 
-{ 
-    options.JsonSerializerOptions.PropertyNamingPolicy = null; 
-});
+builder.Services.AddControllers();
+builder.Services.AddControllers().AddJsonOptions(
+     options => { options.JsonSerializerOptions.PropertyNamingPolicy = null; }
+ );
 
 builder.Services.Configure<EmailSettings>(builder.Configuration.GetSection("EmailSettings"));
 builder.Services.AddScoped<IMfaService, MfaService>();
@@ -51,31 +40,28 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(options =>
 {
     options.SwaggerDoc("v1", new OpenApiInfo { Title = "RFIDP2P3_API", Version = "v1" });
-    
-    options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+    options.AddSecurityDefinition("XApiKey", new OpenApiSecurityScheme
     {
-        Description = "Masukkan token JWT dengan format: Bearer {token}",
-        Name = "Authorization",
+        Description = "API Key Must Apper in Header",
         In = ParameterLocation.Header,
-        Type = SecuritySchemeType.ApiKey,
-        Scheme = "Bearer"
+        Name = "XApiKey",
+        Type = SecuritySchemeType.ApiKey
     });
-    
     options.AddSecurityRequirement(new OpenApiSecurityRequirement 
     {
         {
             new OpenApiSecurityScheme
             {
+                Name = "XApiKey",
+                Type = SecuritySchemeType.ApiKey,
+                In = ParameterLocation.Header,
                 Reference = new OpenApiReference
                 {
                     Type = ReferenceType.SecurityScheme,
-                    Id = "Bearer"
+                    Id = "XApiKey"
                 },
-                Scheme = "oauth2",
-                Name = "Bearer",
-                In = ParameterLocation.Header
             },
-            new List<string>()
+            new string[]{ }
         }
     });
 });
@@ -86,22 +72,6 @@ builder.Services.Configure<ForwardedHeadersOptions>(options =>
     options.KnownNetworks.Clear();
     options.KnownProxies.Clear();
 });
-
-var jwtConfig = builder.Configuration.GetSection("JWT");
-builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-    .AddJwtBearer(options =>
-    {
-        options.TokenValidationParameters = new TokenValidationParameters
-        {
-            ValidateIssuer = true,
-            ValidIssuer = jwtConfig["Issuer"],
-            ValidateAudience = true,
-            ValidAudience = jwtConfig["Audience"],
-            ValidateLifetime = true,
-            ValidateIssuerSigningKey = true,
-            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtConfig["Key"]!))
-        };
-    });
 
 var app = builder.Build();
 
@@ -116,7 +86,7 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 app.UseCors("AllowSpecificOrigin");
-//app.UseMiddleware<APIKeyMiddleware>();
+app.UseMiddleware<APIKeyMiddleware>();
 
 app.UseAuthentication();
 app.UseAuthorization();

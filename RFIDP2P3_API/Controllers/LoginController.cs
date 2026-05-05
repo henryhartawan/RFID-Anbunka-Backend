@@ -3,25 +3,20 @@ using RFIDP2P3_API.Models;
 using System.Data.SqlClient;
 using System.Data;
 using System.Collections.Concurrent;
-using Microsoft.AspNetCore.Authorization;
-using RFIDP2P3_API.Helpers;
 
 namespace RFIDP2P3_API.Controllers
 {
     [Route("api/[controller]/[action]")]
     [ApiController]
-    [AllowAnonymous]
     public class LoginController : Controller
     {
         private readonly string _configuration;
-        private readonly IConfiguration _config;
         private string? remarks = "";
 
         private static readonly ConcurrentDictionary<string, (int Attempts, DateTime LastAttempt)> _failedLoginTracker = new();
 
         public LoginController(IConfiguration configuration)
         {
-            _config = configuration;
             _configuration = configuration.GetConnectionString("DefaultConnection");
         }
 
@@ -146,17 +141,6 @@ namespace RFIDP2P3_API.Controllers
                     //    }
                     //    conn.Close();
                     //}
-                    
-                    var loggedUser = userLogin.FirstOrDefault();
-                    bool requireMfa = loggedUser.MFAStatus?.ToLower() == "true" || loggedUser.MFAStatus == "1";
-
-                    if (requireMfa)
-                        return Ok(new { requireMfa = true, user = loggedUser });
-                    else
-                    {
-                        string tokenString = JwtHelper.GenerateToken(loggedUser, _config);
-                        return Ok(new { requireMfa = false, token = tokenString, user = loggedUser });
-                    }
 
                     return Ok(userLogin);
                 }
