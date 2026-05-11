@@ -1,13 +1,15 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using RFIDP2P3_API.Models;
-using System.Data.SqlClient;
 using System.Data;
+using System.Data.SqlClient;
 
 namespace RFIDP2P3_API.Controllers
 {
 	[Route("api/[controller]/[action]")]
 	[ApiController]
-	public class DropDownController : Controller
+    [AllowAnonymous]
+    public class DropDownController : Controller
 	{
 		private readonly string _configuration;
 

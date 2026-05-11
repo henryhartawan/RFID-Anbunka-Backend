@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using RFIDP2P3_API.Models;
 using System.Data;
 using System.Data.SqlClient;
@@ -7,6 +8,7 @@ namespace RFIDP2P3_API.Controllers
 {
     [Route("api/[controller]/[action]")]
     [ApiController]
+    [AllowAnonymous]
     public class AndonTimelineDeliveryController : ControllerBase
     {
         private readonly string _configuration;

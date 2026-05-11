@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Identity;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using RFIDP2P3_API.Models;
 using SixLabors.ImageSharp.PixelFormats;
@@ -11,6 +12,7 @@ namespace RFIDP2P3_API.Controllers
 {
     [Route("api/[controller]/[action]")]
     [ApiController]
+    [AllowAnonymous]
     public class AndonController : Controller
     {
 		private readonly string _configuration;
