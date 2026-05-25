@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using RFIDP2P3_API.Models;
 using System.Data;
 using System.Data.SqlClient;
+using RFIDP2P3_API.Helpers;
 
 namespace RFIDP2P3_API.Controllers
 {
@@ -55,15 +56,14 @@ namespace RFIDP2P3_API.Controllers
         [HttpPost]
         public ActionResult<string> Upload([FromForm] IFormFile file, [FromQuery] string UID)
         {
-            if (file == null || file.Length == 0)
-                return BadRequest("No file uploaded.");
+            var validation = FileHelper.ValidateFile(
+                file, 
+                maxSizeInMb: 5, 
+                allowedExtensions: new[] { ".xls", ".xlsx" }
+            );
 
-            if (file.Length > 5 * 1024 * 1024)
-                return BadRequest("Excel file size cannot exceed 5MB.");
-
-            string extension = Path.GetExtension(file.FileName).ToLower();
-            if (extension != ".xls" && extension != ".xlsx")
-                return BadRequest("Invalid file format. Please upload an Excel file (.xls or .xlsx).");
+            if (!validation.IsValid)
+                return BadRequest(validation.ErrorMessage);
 
             int rowCount = 2; 
             List<string> errorLogs = new List<string>();
@@ -194,7 +194,9 @@ namespace RFIDP2P3_API.Controllers
             }
             catch (Exception ex)
             {
-                return BadRequest($"<div style='color:red;'>Critical System Error: {ex.Message}</div>");
+                return BadRequest("<div style='text-align: left; padding: 10px; background: #fdf2f2; border: 1px solid #f2dede; border-radius: 5px; color: #a94442;'>" +
+                                  "Terjadi kesalahan pada sistem saat memproses file. Silakan coba beberapa saat lagi atau hubungi administrator." +
+                                  "</div>");
             }
         }
     }

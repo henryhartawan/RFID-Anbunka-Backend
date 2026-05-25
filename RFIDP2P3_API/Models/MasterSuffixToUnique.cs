@@ -8,6 +8,8 @@
 		public string? UniqueCode { get; set; }
 		public string? ModelGroup { get; set; }
 		public string? LineOrderCode { get; set; }
+		public string? OrderFrom { get; set; }
+		public string? PartNumber { get; set; }
         
 		public string? UserLogin { get; set; }
 		

@@ -1,0 +1,1 @@
+INSERT INTO M_Menu VALUES(120, 'ParameterCapacity', 'Parameter Calc Capacity', 120, 11)

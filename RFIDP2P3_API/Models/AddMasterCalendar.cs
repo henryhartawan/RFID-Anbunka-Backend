@@ -11,7 +11,10 @@
         public string? CalendarStatus { get; set; }
         public string? CalendarStat { get; set; }
         public string? WorkingTime { get; set; }
-        public string? Overtime { get; set; }
+        public string? OEE { get; set; }
+        public string? CT { get; set; }
+        public string? EarlyOvertime { get; set; }
+        public string? EndOvertime { get; set; }
         public string? MandatoryPdt { get; set; }
         public string? OtherPdt { get; set; }
         public string? TimePdt { get; set; }

@@ -1,0 +1,2 @@
+ALTER TABLE M_Suffix_to_Unique
+ADD OrderFrom NVARCHAR(20) NULL

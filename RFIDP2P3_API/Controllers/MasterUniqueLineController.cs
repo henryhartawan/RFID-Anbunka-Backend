@@ -38,6 +38,7 @@ namespace RFIDP2P3_API.Controllers
                         Line = sdr["Line"].ToString(),
                         UniqueNumber = sdr["UniqueNumber"].ToString(),
                         FinishGoods = sdr["FinishGoods"].ToString(),
+                        QtyPerBox = sdr["QtyPerBox"].ToString(),
                         LastUpdate = sdr["DateUpdate"].ToString(),
 						UserUpdate = sdr["UserUpdate"].ToString(),
                         UniqueLineStatus = sdr["UniqueLineStatus"].ToString(),

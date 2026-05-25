@@ -3,6 +3,7 @@ using RFIDP2P3_API.Models;
 using System.Data.SqlClient;
 using System.Data;
 using ExcelDataReader;
+using RFIDP2P3_API.Helpers;
 
 namespace RFIDP2P3_API.Controllers
 {
@@ -39,6 +40,8 @@ namespace RFIDP2P3_API.Controllers
 						UniqueCode = sdr["UniqueCode"].ToString(),
 						ModelGroup = sdr["ModelGroup"].ToString(),
 						LineOrderCode = sdr["LineOrderCode"].ToString(),
+						OrderFrom = sdr["OrderFrom"].ToString(),
+						PartNumber = sdr["PartNumber"].ToString(),
 						CreatedBy = sdr["CreatedBy"].ToString(),
 						CreatedDate = sdr["CreatedDate"].ToString(),
 						UpdatedBy = sdr["UpdatedBy"].ToString(),
@@ -65,6 +68,7 @@ namespace RFIDP2P3_API.Controllers
 				cmd.Parameters.Add(new SqlParameter("@UniqueCode", model.UniqueCode));
 				cmd.Parameters.Add(new SqlParameter("@ModelGroup", model.ModelGroup ?? (object)DBNull.Value));
 				cmd.Parameters.Add(new SqlParameter("@LineOrderCode", model.LineOrderCode));
+				cmd.Parameters.Add(new SqlParameter("@OrderFrom", model.OrderFrom));
 				cmd.Parameters.Add(new SqlParameter("@UserLogin", model.UserLogin));
 
 				conn.Open();
@@ -79,6 +83,8 @@ namespace RFIDP2P3_API.Controllers
 		[HttpPost]
 		public ActionResult<string> DEL(MasterSuffixToUnique model)
 		{
+			string remarks = string.Empty;
+			
 			using (SqlConnection conn = new SqlConnection(_configuration))
 			using (SqlCommand cmd = new SqlCommand("sp_M_Suffix_to_Unique_Del", conn))
 			{
@@ -90,25 +96,27 @@ namespace RFIDP2P3_API.Controllers
 				conn.Open();
 				cmd.ExecuteNonQuery();
 				remarks = Convert.ToString(cmd.Parameters["@Remarks"].Value);
-				conn.Close();
 			}
-			if (!string.IsNullOrEmpty(remarks)) return BadRequest(remarks);
-			else return Ok("success");
+			if (remarks == "Success") 
+				return Ok(remarks);
+			else if (remarks == "Not Found") 
+				return NotFound(remarks);
+			else 
+				return BadRequest(remarks);
         }
 		
 		[HttpPost]
 		public ActionResult<string> UploadExcel([FromForm] IFormFile file, [FromForm] string UserLogin)
 		{
-		    if (file == null || file.Length == 0)
-		        return BadRequest("No file uploaded.");
+			var validation = FileHelper.ValidateFile(
+				file, 
+				maxSizeInMb: 5, 
+				allowedExtensions: new[] { ".xls", ".xlsx" }
+			);
 
-		    if (file.Length > 5 * 1024 * 1024)
-		        return BadRequest("Excel file size cannot exceed 5MB.");
-
-		    string extension = Path.GetExtension(file.FileName).ToLower();
-		    if (extension != ".xls" && extension != ".xlsx")
-		        return BadRequest("Invalid file format. Please upload an Excel file (.xls or .xlsx).");
-
+			if (!validation.IsValid)
+				return BadRequest(validation.ErrorMessage);
+			
 		    int rowCount = 2;
 		    List<string> errorLogs = new List<string>();
 		    HashSet<string> excelCombinations = new HashSet<string>();
@@ -131,7 +139,7 @@ namespace RFIDP2P3_API.Controllers
 
 		                var dataTable = dataSet.Tables[0];
 
-		                string[] expectedHeaders = { "Line", "Model Group", "Unique", "Suffix" };
+		                string[] expectedHeaders = { "Line", "Model Group", "Unique", "Suffix", "Order From" };
 		                foreach (string header in expectedHeaders)
 		                {
 		                    if (!dataTable.Columns.Contains(header))
@@ -150,9 +158,10 @@ namespace RFIDP2P3_API.Controllers
 		                            string modelGroup = row["Model Group"]?.ToString()?.Trim();
 		                            string uniqueCode = row["Unique"]?.ToString()?.Trim();
 		                            string suffixCode = row["Suffix"]?.ToString()?.Trim();
+		                            string orderFrom = row["Order From"]?.ToString()?.Trim();
 
 		                            if (string.IsNullOrEmpty(lineOrderCode) && string.IsNullOrEmpty(uniqueCode) && 
-		                                string.IsNullOrEmpty(suffixCode) && string.IsNullOrEmpty(modelGroup))
+		                                string.IsNullOrEmpty(suffixCode) && string.IsNullOrEmpty(modelGroup) && string.IsNullOrEmpty(orderFrom))
 		                            {
 		                                rowCount++;
 		                                continue;
@@ -182,6 +191,7 @@ namespace RFIDP2P3_API.Controllers
 		                                cmd.Parameters.Add(new SqlParameter("@UniqueCode", uniqueCode));
 		                                cmd.Parameters.Add(new SqlParameter("@ModelGroup", string.IsNullOrEmpty(modelGroup) ? (object)DBNull.Value : modelGroup));
 		                                cmd.Parameters.Add(new SqlParameter("@LineOrderCode", lineOrderCode));
+		                                cmd.Parameters.Add(new SqlParameter("@OrderFrom", orderFrom));
 		                                cmd.Parameters.Add(new SqlParameter("@UserLogin", UserLogin ?? "SystemUpload"));
 		                                
 		                                cmd.ExecuteNonQuery();

@@ -9,6 +9,7 @@
         public string? UniqueNumber { get; set; }
         public string? FinishGoods { get; set; }
         public string? UniqueLineStatus { get; set; }
+        public string? QtyPerBox { get; set; }
 		public string? UserLogin { get; set; }
 		public string? LastUpdate { get; set; }
 		public string? UserUpdate { get; set; }
