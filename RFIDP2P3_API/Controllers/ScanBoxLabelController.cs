@@ -57,6 +57,7 @@ namespace RFIDP2P3_API.Controllers
         {
             string now = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
             string idStr = "";
+            string piold = "";
 
             using (SqlConnection conn = new SqlConnection(_configuration))
             using (SqlCommand cmd = new SqlCommand("sp_Submit_SKID", conn))
@@ -78,6 +79,12 @@ namespace RFIDP2P3_API.Controllers
 
                 foreach (var sbls in sbl.Kanban)
                 {
+                    if (piold != sbls.PI_No)
+                    {
+                        idStr = "";
+                        piold = sbls.PI_No;
+                    }
+
                     cmd.Parameters["@SKID_ID"].Value = idStr;
                     cmd.Parameters["@KanbanNo"].Value = sbls.KanbanNo;
                     cmd.Parameters["@PI_No"].Value = sbls.PI_No;

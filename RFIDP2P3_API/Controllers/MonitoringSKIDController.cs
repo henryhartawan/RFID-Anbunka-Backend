@@ -53,5 +53,40 @@ namespace RFIDP2P3_API.Controllers
 
             return result;
         }
-	}
+
+        [HttpPost]
+        public async Task<List<RemarksNote>> Upload(IFormFile file, string? UID)
+        {
+            var list = new List<RemarksNote>();
+            using (var stream = new MemoryStream())
+            {
+                await file.CopyToAsync(stream);
+                using (var package = new ExcelPackage(stream))
+                {
+                    BusinessObject b = new();
+                    string remarks = b.UploadXLS(package, UID, _configuration);
+                    if ("success" != remarks)
+                    {
+                        b.WriteLog(remarks, "XLSRemarks");
+                    }
+                    else
+                    {
+                        object result;
+                        using (SqlConnection conn = new(_configuration))
+                        {
+                            conn.Open();
+                            SqlCommand cmd = new("exec sp_Upload_SKID @EntryUser", conn);
+                            cmd.CommandType = CommandType.Text;
+                            cmd.Parameters.Add(new("@EntryUser", UID));
+                            result = cmd.ExecuteScalar();
+                            conn.Close();
+                        }
+                        remarks = result.ToString();
+                    }
+                    list.Add(new RemarksNote { Remarks = remarks });
+                    return list;
+                }
+            }
+        }
+    }
 }
