@@ -1,6 +1,6 @@
 ﻿namespace RFIDP2P3_API.Models;
 
-public class MasterCustomerOrder
+public class CustomerOrder
 {
     public int CustomerOrderID { get; set; }
     public string? Periode { get; set; }

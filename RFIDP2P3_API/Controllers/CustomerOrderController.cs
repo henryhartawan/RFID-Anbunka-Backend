@@ -4,6 +4,7 @@ using System.Text.Json;
 using ClosedXML.Excel;
 using ExcelDataReader;
 using Microsoft.AspNetCore.Mvc;
+using RFIDP2P3_API.Helpers;
 using RFIDP2P3_API.Models;
 
 namespace RFIDP2P3_API.Controllers
@@ -11,20 +12,20 @@ namespace RFIDP2P3_API.Controllers
 
     [Route("api/[controller]/[action]")]
     [ApiController]
-    public class MasterCustomerOrderController : Controller
+    public class CustomerOrderController : Controller
     {
         private readonly string _configuration;
 
-        public MasterCustomerOrderController(IConfiguration configuration)
+        public CustomerOrderController(IConfiguration configuration)
         {
             _configuration = configuration.GetConnectionString("DefaultConnection");
             System.Text.Encoding.RegisterProvider(System.Text.CodePagesEncodingProvider.Instance);
         }
 
         [HttpPost]
-        public ActionResult<IEnumerable<MasterCustomerOrder>> INQ([FromBody] JsonElement body)
+        public ActionResult<IEnumerable<CustomerOrder>> INQ([FromBody] JsonElement body)
         {
-            List<MasterCustomerOrder> CustomerOrders = new();
+            List<CustomerOrder> CustomerOrders = new();
 
             string periode = "";
             if (body.TryGetProperty("Periode", out JsonElement periodeElement))
@@ -45,7 +46,7 @@ namespace RFIDP2P3_API.Controllers
 
                     while (sdr.Read())
                     {
-                        CustomerOrders.Add(new MasterCustomerOrder
+                        CustomerOrders.Add(new CustomerOrder
                         {
                             CustomerOrderID = Convert.ToInt32(sdr["CustomerOrderID"]),
                             Periode = sdr["Periode"].ToString(),
@@ -70,13 +71,14 @@ namespace RFIDP2P3_API.Controllers
         [HttpPost]
         public IActionResult Upload([FromForm] IFormFile file, [FromQuery] string UID)
         {
-            if (file == null || file.Length == 0)
-                return Ok(new[] { new { Remarks = "File not found or empty." } });
+            var validation = FileHelper.ValidateFile(
+                file, 
+                maxSizeInMb: 5, 
+                allowedExtensions: new[] { ".xls", ".xlsx" }
+            );
 
-            string ext = Path.GetExtension(file.FileName).ToLower();
-            if (ext != ".xls" && ext != ".xlsx")
-                return Ok(new[]
-                    { new { Remarks = "Invalid file format. Please upload an Excel file (.xls or .xlsx)." } });
+            if (!validation.IsValid)
+                return BadRequest(validation.ErrorMessage);
 
             try
             {
@@ -89,8 +91,7 @@ namespace RFIDP2P3_API.Controllers
                 dtUpload.Columns.Add("DayNumber", typeof(int));
                 dtUpload.Columns.Add("ValueData", typeof(decimal));
 
-                // Mendefinisikan list validSources
-                string[] validSources = { "SAP", "KAP", "DCWA", "TMMIN", "DOMI" };
+                string[] validSources = { "SAP", "KAP", "DCWA", "TMMIN", "DDMI" };
 
                 using (var stream = file.OpenReadStream())
                 using (var reader = ExcelReaderFactory.CreateReader(stream))
@@ -100,8 +101,6 @@ namespace RFIDP2P3_API.Controllers
                         ConfigureDataTable = (_) => new ExcelDataTableConfiguration()
                         {
                             UseHeaderRow = true,
-                            // Tidak perlu skip row tambahan agar sinkron dengan index
-                            // ReadHeaderRow dihilangkan agar by default membaca row 1 sebagai header
                         }
                     });
 
@@ -112,30 +111,25 @@ namespace RFIDP2P3_API.Controllers
                     {
                         rowIndex++;
 
-                        // Akses via index agar aman dari perubahan nama header
                         string periode = row[0]?.ToString()?.Trim();
                         string source = row[1]?.ToString()?.Trim()?.ToUpper();
                         string suffix = row[2]?.ToString()?.Trim()?.ToUpper();
 
-                        // Lewati baris yang kosong sepenuhnya
                         if (string.IsNullOrEmpty(periode) && string.IsNullOrEmpty(source) && string.IsNullOrEmpty(suffix))
                             continue;
                             
-                        // Jika ada data yang tidak lengkap dalam 3 kolom utama
                         if (string.IsNullOrEmpty(periode) || string.IsNullOrEmpty(source) || string.IsNullOrEmpty(suffix))
                         {
                             errorLogs.Add($"Row {rowIndex}: Periode, Source, and Suffix cannot be empty.");
                             continue;
                         }
 
-                        // VALIDASI SOURCE
                         if (!validSources.Contains(source))
                         {
-                            errorLogs.Add($"Row {rowIndex}: Invalid Source '{source}'. Valid sources are: SAP, KAP, DCWA, TMMIN, DOMI.");
+                            errorLogs.Add($"Row {rowIndex}: Invalid Source '{source}'. Valid sources are: SAP, KAP, DCWA, TMMIN, DDMI.");
                             continue;
                         }
 
-                        // VALIDASI FORMAT PERIODE
                         if (!DateTime.TryParseExact(periode, "yyyy-MM", null, System.Globalization.DateTimeStyles.None,
                                 out DateTime parsedPeriode))
                         {
@@ -145,21 +139,16 @@ namespace RFIDP2P3_API.Controllers
 
                         int daysInMonth = DateTime.DaysInMonth(parsedPeriode.Year, parsedPeriode.Month);
 
-                        // LOOPING HARI (Menggunakan Index Kolom)
-                        // Index 0 = Periode, Index 1 = Source, Index 2 = Suffix, Index 3 = Tanggal 1, dst.
                         for (int day = 1; day <= daysInMonth; day++)
                         {
-                            int colIndex = day + 2; // Menentukan posisi index kolom berdasarkan tanggal
+                            int colIndex = day + 2;
 
-                            // Cek apakah index kolom masih ada dalam batas file excel yang diunggah
                             if (colIndex < dtExcel.Columns.Count && row[colIndex] != DBNull.Value)
                             {
                                 if (decimal.TryParse(row[colIndex].ToString(), out decimal valueData))
                                 {
-                                    // Membulatkan (0.5 jadi 1, 0.49 jadi 0)
                                     decimal roundedValue = Math.Round(valueData, 0, MidpointRounding.AwayFromZero);
 
-                                    // Hanya simpan jika nilainya lebih dari 0
                                     if (roundedValue > 0)
                                     {
                                         dtUpload.Rows.Add(periode, source, suffix, day, roundedValue);

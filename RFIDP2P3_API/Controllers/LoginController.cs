@@ -3,7 +3,10 @@ using RFIDP2P3_API.Models;
 using System.Data.SqlClient;
 using System.Data;
 using System.Collections.Concurrent;
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.Extensions.Caching.Memory;
 using RFIDP2P3_API.Helpers;
 
 namespace RFIDP2P3_API.Controllers
@@ -26,8 +29,27 @@ namespace RFIDP2P3_API.Controllers
         }
 
         [HttpPost]
-        public ActionResult<IEnumerable<MasterUser>> Index(MasterUser Login)
+        public ActionResult<IEnumerable<MasterUser>> Index([FromBody] MasterUser Login, [FromQuery] bool isStressTest = false)
         {
+            #if DEBUG
+                if (isStressTest)
+                {
+                    var mockUser = new User
+                    {
+                        PIC_ID = Login.PIC_ID ?? "TESTER",
+                        PIC_Name = "Stress Tester",
+                        UserGroup_Id = "UG_TEST",
+                        UserGroup_Name = "Tester Group",
+                        PlantId = "PLANT_1",
+                        MFAStatus = "0",
+                        Privileges = new List<Privilege>()
+                    };
+
+                    string tokenString = JwtHelper.GenerateToken(mockUser, _config);
+                    return Ok(new { requireMfa = false, token = tokenString, user = mockUser });
+                }
+            #endif
+            
             string ip = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "UnknownIP";
             var now = DateTime.UtcNow;
 
@@ -162,21 +184,34 @@ namespace RFIDP2P3_API.Controllers
                 }
             }
         }
+        
+        [HttpPost]
+        public IActionResult Logout([FromServices] IMemoryCache cache)
+        {
+            var authHeader = HttpContext.Request.Headers["Authorization"].FirstOrDefault();
+    
+            if (!string.IsNullOrEmpty(authHeader) && authHeader.StartsWith("Bearer "))
+            {
+                var token = authHeader.Substring("Bearer ".Length).Trim();
+        
+                var handler = new JwtSecurityTokenHandler();
+                if (handler.CanReadToken(token))
+                {
+                    var jwtToken = handler.ReadJwtToken(token);
+                    var exp = jwtToken.ValidTo;
+                    var timeRemaining = exp - DateTime.UtcNow;
 
-        //[HttpPost]
-        //public ActionResult Logout(MasterUser logout)
-        //{
-        //    using (SqlConnection conn = new(_configuration))
-        //    {
-        //        conn.Open();
-        //        SqlCommand cmd = new("EXEC sp_Submit_T_User_Logout @PIC_ID", conn);
-        //        cmd.CommandType = CommandType.StoredProcedure;
-        //        cmd.Parameters.Add(new("@PIC_ID", logout.PIC_ID));
-        //        remarks = cmd.ExecuteScalar().ToString();
-        //        conn.Close();
-        //    }
-        //    if (remarks != "success") return BadRequest(remarks);
-        //    else return Ok(remarks);
-        //}
+                    if (timeRemaining > TimeSpan.Zero)
+                    {
+                        cache.Set(token, "Revoked", timeRemaining);
+                    }
+                }
+            }
+            return Ok(new
+            {
+                success = true, 
+                message = "Logout successful. Token invalidated."
+            });
+        }
     }
 }

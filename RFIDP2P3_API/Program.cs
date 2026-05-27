@@ -8,6 +8,7 @@ using RFIDP2P3_API.Services.Implementations;
 using RFIDP2P3_API.Services.Interfaces;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.IdentityModel.Tokens;
+using RFIDP2P3_API.Middlewares;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -42,6 +43,8 @@ builder.Services.AddControllers(options =>
 builder.Services.Configure<EmailSettings>(builder.Configuration.GetSection("EmailSettings"));
 builder.Services.AddScoped<IMfaService, MfaService>();
 builder.Services.AddScoped<IEmailService, EmailService>();
+
+builder.Services.AddMemoryCache();
 //Rate Limit
 builder.Services.AddSingleton<System.Collections.Concurrent.ConcurrentDictionary<string, (
     int Count, System.DateTime WindowStartUtc, System.DateTime LastHitUtc)>>();
@@ -119,6 +122,7 @@ app.UseCors("AllowSpecificOrigin");
 //app.UseMiddleware<APIKeyMiddleware>();
 
 app.UseAuthentication();
+app.UseMiddleware<TokenBlacklistMiddleware>();
 app.UseAuthorization();
 
 app.MapControllers();
