@@ -86,7 +86,7 @@ namespace RFIDP2P3_API.Controllers
             }
             catch (Exception ex)
             {
-                return BadRequest("System Error: " + ex.Message);
+                return BadRequest("System error occurred");
             }
         }
 
@@ -127,7 +127,7 @@ namespace RFIDP2P3_API.Controllers
             }
             catch (Exception ex)
             {
-                return BadRequest("System Error: " + ex.Message);
+                return BadRequest("System error occured");
             }
         }
     }

@@ -42,10 +42,11 @@ namespace RFIDP2P3_API.Controllers
 						LineOrderCode = sdr["LineOrderCode"].ToString(),
 						OrderFrom = sdr["OrderFrom"].ToString(),
 						PartNumber = sdr["PartNumber"].ToString(),
+						IsActive = sdr["IsActive"] != DBNull.Value && Convert.ToBoolean(sdr["IsActive"]),
 						CreatedBy = sdr["CreatedBy"].ToString(),
-						CreatedDate = sdr["CreatedDate"].ToString(),
+						CreatedDate = sdr["CreatedDate"] != DBNull.Value ? Convert.ToDateTime(sdr["CreatedDate"]).ToString("yyyy-MM-dd HH:mm:ss") : "",
 						UpdatedBy = sdr["UpdatedBy"].ToString(),
-						UpdatedDate = sdr["UpdatedDate"].ToString()
+						UpdatedDate = sdr["UpdatedDate"] != DBNull.Value ? Convert.ToDateTime(sdr["UpdatedDate"]).ToString("yyyy-MM-dd HH:mm:ss") : ""
                     });
 				}
 				conn.Close();
@@ -69,6 +70,7 @@ namespace RFIDP2P3_API.Controllers
 				cmd.Parameters.Add(new SqlParameter("@ModelGroup", model.ModelGroup ?? (object)DBNull.Value));
 				cmd.Parameters.Add(new SqlParameter("@LineOrderCode", model.LineOrderCode));
 				cmd.Parameters.Add(new SqlParameter("@OrderFrom", model.OrderFrom));
+				cmd.Parameters.Add(new SqlParameter("@IsActive", model.IsActive));
 				cmd.Parameters.Add(new SqlParameter("@UserLogin", model.UserLogin));
 
 				conn.Open();
@@ -139,7 +141,7 @@ namespace RFIDP2P3_API.Controllers
 
 		                var dataTable = dataSet.Tables[0];
 
-		                string[] expectedHeaders = { "Line", "Model Group", "Unique", "Suffix", "Order From" };
+		                string[] expectedHeaders = { "Line", "Model Group", "Unique", "Suffix", "Order From", "Status" };
 		                foreach (string header in expectedHeaders)
 		                {
 		                    if (!dataTable.Columns.Contains(header))
@@ -159,14 +161,20 @@ namespace RFIDP2P3_API.Controllers
 		                            string uniqueCode = row["Unique"]?.ToString()?.Trim();
 		                            string suffixCode = row["Suffix"]?.ToString()?.Trim();
 		                            string orderFrom = row["Order From"]?.ToString()?.Trim();
+		                            string statusRaw = row["Status"]?.ToString()?.Trim();
 
 		                            if (string.IsNullOrEmpty(lineOrderCode) && string.IsNullOrEmpty(uniqueCode) && 
-		                                string.IsNullOrEmpty(suffixCode) && string.IsNullOrEmpty(modelGroup) && string.IsNullOrEmpty(orderFrom))
+		                                string.IsNullOrEmpty(suffixCode) && string.IsNullOrEmpty(modelGroup) && 
+		                                string.IsNullOrEmpty(orderFrom) && string.IsNullOrEmpty(statusRaw))
 		                            {
 		                                rowCount++;
 		                                continue;
 		                            }
 
+		                            bool isActive = false;
+		                            if (!string.IsNullOrEmpty(statusRaw))
+			                            isActive = statusRaw.Equals("Active", StringComparison.OrdinalIgnoreCase);
+		                            
 		                            if (string.IsNullOrEmpty(lineOrderCode) || string.IsNullOrEmpty(uniqueCode) || string.IsNullOrEmpty(suffixCode))
 		                            {
 		                                errorLogs.Add($"Row {rowCount}: Line, Unique, and Suffix are mandatory fields.");
@@ -192,6 +200,7 @@ namespace RFIDP2P3_API.Controllers
 		                                cmd.Parameters.Add(new SqlParameter("@ModelGroup", string.IsNullOrEmpty(modelGroup) ? (object)DBNull.Value : modelGroup));
 		                                cmd.Parameters.Add(new SqlParameter("@LineOrderCode", lineOrderCode));
 		                                cmd.Parameters.Add(new SqlParameter("@OrderFrom", orderFrom));
+		                                cmd.Parameters.Add(new SqlParameter("@IsActive", isActive));
 		                                cmd.Parameters.Add(new SqlParameter("@UserLogin", UserLogin ?? "SystemUpload"));
 		                                
 		                                cmd.ExecuteNonQuery();

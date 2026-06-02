@@ -10,6 +10,7 @@
 		public string? LineOrderCode { get; set; }
 		public string? OrderFrom { get; set; }
 		public string? PartNumber { get; set; }
+		public bool IsActive { get; set; }
         
 		public string? UserLogin { get; set; }
 		

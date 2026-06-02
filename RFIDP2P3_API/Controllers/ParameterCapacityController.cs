@@ -144,30 +144,26 @@ namespace RFIDP2P3_API.Controllers
 
                             int mandatoryVal = 0;
                             if (string.IsNullOrEmpty(mandatoryStr))
-                            {
-                                errorLogs.Add($"Baris {rowCount}: Mandatory belum diisi untuk Line {lineCode}.");
-                            }
+                                errorLogs.Add($"Row {rowCount}: Mandatory is missing for Line {lineCode}.");
                             else if (!int.TryParse(mandatoryStr, out mandatoryVal))
-                            {
-                                errorLogs.Add($"Baris {rowCount}: Mandatory harus berupa angka.");
-                            }
+                                errorLogs.Add($"Row {rowCount}: Mandatory must be a number.");
                             else
                             {
                                 bool isKLine = lineCode != null && lineCode.StartsWith("K", StringComparison.OrdinalIgnoreCase);
                         
                                 if (isKLine && mandatoryVal != 34 && mandatoryVal != 82)
-                                    errorLogs.Add($"Baris {rowCount}: Nilai Mandatory untuk {lineCode} (K-Line) harus 34 atau 82.");
+                                    errorLogs.Add($"Row {rowCount}: Mandatory value for {lineCode} (K-Line) must be 34 or 82.");
                                 else if (!isKLine && mandatoryVal != 100 && mandatoryVal != 52)
-                                    errorLogs.Add($"Baris {rowCount}: Nilai Mandatory untuk {lineCode} (Machining) harus 100 atau 52.");
+                                    errorLogs.Add($"Row {rowCount}: Mandatory value for {lineCode} (Machining) must be 100 or 52.");
                             }
                             
                             int advanceVal = 0;
                             if (!string.IsNullOrEmpty(advanceStr) && !int.TryParse(advanceStr, out advanceVal))
-                                errorLogs.Add($"Baris {rowCount}: Advance harus berupa angka.");
+                                errorLogs.Add($"Row {rowCount}: Advance must be a number.");
 
                             int overtimeVal = 0;
                             if (!string.IsNullOrEmpty(overtimeStr) && !int.TryParse(overtimeStr, out overtimeVal))
-                                errorLogs.Add($"Baris {rowCount}: Overtime HOT harus berupa angka.");
+                                errorLogs.Add($"Row {rowCount}: Overtime HOT must be a number.");
 
                             int offsetN = 0;
                             if (!string.IsNullOrEmpty(bulanProduksi))
@@ -212,14 +208,13 @@ namespace RFIDP2P3_API.Controllers
                                             "</ul>";
             
                     if (errorLogs.Count > 10)
-                        combinedErrors += $"<p style='margin-top: 10px; font-size: 12px; color: #777;'><i>...dan {errorLogs.Count - 10} error lainnya.</i></p>";
-
+                        combinedErrors += $"<p style='margin-top: 10px; font-size: 12px; color: #777;'><i>...and {errorLogs.Count - 10} other error(s).</i></p>";
                     combinedErrors += "</div>";
                     return BadRequest(combinedErrors);
                 }
 
                 if (uploadData.Count == 0)
-                    return BadRequest("Tidak ada data valid yang bisa diproses.");
+                    return BadRequest("No valid data available to process.");
                 
                 string inputJson = System.Text.Json.JsonSerializer.Serialize(uploadData);
                 string currentUser = string.IsNullOrEmpty(UID) ? "SystemUpload" : UID;
@@ -241,13 +236,13 @@ namespace RFIDP2P3_API.Controllers
                 }
 
                 if (spRemarks.ToLower() != "success")
-                    return BadRequest($"<div style='text-align: left; padding: 10px; background: #fdf2f2; border: 1px solid #f2dede; border-radius: 5px; color: #a94442;'>Upload Ditolak Sistem: {spRemarks}</div>");
-
+                    return BadRequest($"<div style='text-align: left; padding: 10px; background: #fdf2f2; border: 1px solid #f2dede; border-radius: 5px; color: #a94442;'>Upload Rejected by System: {spRemarks}</div>");
+                
                 return Ok("success");
             }
             catch (Exception e)
             {
-                return BadRequest("Terjadi kesalahan sistem: " + e.Message);
+                return BadRequest("System error occurred");
                 // return BadRequest("<div style='text-align: left; padding: 10px; background: #fdf2f2; border: 1px solid #f2dede; border-radius: 5px; color: #a94442; z-index: 9999;'>" +
                 //                   "Terjadi kesalahan pada sistem saat memproses file. Silakan coba beberapa saat lagi atau hubungi administrator." +
                 //                   "</div>");
@@ -292,13 +287,11 @@ namespace RFIDP2P3_API.Controllers
                 }
 
                 if (dt.Rows.Count == 0)
-                    return BadRequest("Data tidak ditemukan untuk periode ini. Tidak dapat men-generate template.");
-
+                    return BadRequest("No data found for this period. Cannot generate template.");
+                
                 string cleanPeriode = periode.Replace("-", "");
                 if (!DateTime.TryParseExact(cleanPeriode, "yyyyMM", System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.None, out DateTime baseDate))
-                {
-                    return BadRequest("Format periode tidak valid.");
-                }
+                    return BadRequest("Invalid period format.");
 
                 using (var workbook = new XLWorkbook())
                 {
@@ -368,7 +361,7 @@ namespace RFIDP2P3_API.Controllers
             }
             catch (Exception ex)
             {
-                return BadRequest("Error generating template: " + ex.Message);
+                return BadRequest("Error generating template");
             }
         }
     }

@@ -1,0 +1,1 @@
+INSERT INTO M_Menu VALUES(122, 'OrderDdmi', 'Order DDMI', 122, 13)
