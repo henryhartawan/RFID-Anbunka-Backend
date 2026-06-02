@@ -18,37 +18,37 @@ namespace RFIDP2P3_API.Controllers
     {
         private readonly string _configuration;
         private readonly IConfiguration _config;
+        private readonly IWebHostEnvironment _env;
         private string? remarks = "";
 
         private static readonly ConcurrentDictionary<string, (int Attempts, DateTime LastAttempt)> _failedLoginTracker = new();
 
-        public LoginController(IConfiguration configuration)
+        public LoginController(IConfiguration configuration, IWebHostEnvironment env)
         {
             _config = configuration;
             _configuration = configuration.GetConnectionString("DefaultConnection");
+            _env = env;
         }
 
         [HttpPost]
         public ActionResult<IEnumerable<MasterUser>> Index([FromBody] MasterUser Login, [FromQuery] bool isStressTest = false)
         {
-            #if DEBUG
-                if (isStressTest)
+            if (_env.IsDevelopment() && isStressTest) 
+            {
+                var mockUser = new User
                 {
-                    var mockUser = new User
-                    {
-                        PIC_ID = Login.PIC_ID ?? "TESTER",
-                        PIC_Name = "Stress Tester",
-                        UserGroup_Id = "UG_TEST",
-                        UserGroup_Name = "Tester Group",
-                        PlantId = "PLANT_1",
-                        MFAStatus = "0",
-                        Privileges = new List<Privilege>()
-                    };
+                    PIC_ID = Login.PIC_ID ?? "TESTER",
+                    PIC_Name = "Stress Tester",
+                    UserGroup_Id = "UG_TEST",
+                    UserGroup_Name = "Tester Group",
+                    PlantId = "PLANT_1",
+                    MFAStatus = "0",
+                    Privileges = new List<Privilege>()
+                };
 
-                    string tokenString = JwtHelper.GenerateToken(mockUser, _config);
-                    return Ok(new { requireMfa = false, token = tokenString, user = mockUser });
-                }
-            #endif
+                string tokenString = JwtHelper.GenerateToken(mockUser, _config);
+                return Ok(new { requireMfa = false, token = tokenString, user = mockUser });
+            }
             
             string ip = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "UnknownIP";
             var now = DateTime.UtcNow;
