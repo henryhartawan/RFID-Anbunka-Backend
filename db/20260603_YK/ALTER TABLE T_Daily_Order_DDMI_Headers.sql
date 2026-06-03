@@ -1,0 +1,2 @@
+ALTER TABLE T_Daily_Order_DDMI_Headers
+ADD CycleNumber INT

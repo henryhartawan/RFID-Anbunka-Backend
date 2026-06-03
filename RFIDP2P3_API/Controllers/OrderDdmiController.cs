@@ -89,6 +89,7 @@ namespace RFIDP2P3_API.Controllers
                 dtUpload.Columns.Add("Distribution", typeof(string));
                 dtUpload.Columns.Add("DockCode", typeof(string));
                 dtUpload.Columns.Add("CycleIssue", typeof(int));
+                dtUpload.Columns.Add("CycleNumber", typeof(int));
                 dtUpload.Columns.Add("Rev", typeof(string));
                 dtUpload.Columns.Add("Page", typeof(int));
                 dtUpload.Columns.Add("Remark", typeof(string));
@@ -122,7 +123,7 @@ namespace RFIDP2P3_API.Controllers
                     
                     string hDnNo = "", hSupplierCode = "", hSupplierName = "", hLocation = "", 
                            hDistribution = "", hDockCode = "", hRev = "", hRemark = "";
-                    int hCycle = 0, hPage = 0;
+                    int hCycleIssue = 0, hPage = 0, hCycleNumber = 0;
                     DateTime? hOrderDate = null, hDeliveryDate = null;
                     TimeSpan? hOrderTime = null, hDeliveryTime = null;
                     string fSupAppv = "", fSupPrep = "", fTransDeliv = "", fTransRecv = "", fDdmiRecv = "", fDdmiOrd = "";
@@ -149,10 +150,44 @@ namespace RFIDP2P3_API.Controllers
                             {
                                 string val = dtExcel.Rows[rowIdx + i][colIdx]?.ToString()?.Trim() ?? "";
                                 if (!string.IsNullOrWhiteSpace(val) && val != "(" && val != ")" && val != ")(" && !val.ToUpper().StartsWith("NOTE"))
-                                    return val;
+                                {
+                                    List<string> signatureParts = new List<string>();
+                                    int tempCol = colIdx;
+                                    bool isEndFound = false;
+                
+                                    while (!isEndFound && tempCol < dtExcel.Rows[rowIdx + i].ItemArray.Length && tempCol <= colIdx + 15)
+                                    {
+                                        string nextVal = dtExcel.Rows[rowIdx + i][tempCol]?.ToString()?.Trim() ?? "";
+                    
+                                        if (!string.IsNullOrWhiteSpace(nextVal))
+                                        {
+                                            if (nextVal.Contains(")")) isEndFound = true;
+                        
+                                            string cleanVal = nextVal.Replace("(", "").Replace(")", "").Trim();
+                        
+                                            if (!string.IsNullOrWhiteSpace(cleanVal))
+                                            {
+                                                signatureParts.Add(cleanVal);
+                                            }
+                                        }
+                                        tempCol++;
+                                    }
+                
+                                    return string.Join(" - ", signatureParts);
+                                }
                             }
                         }
                         return "";
+                    }
+                    
+                    void ResetHeaderAndSignatures()
+                    {
+                        hDnNo = ""; hSupplierCode = ""; hSupplierName = ""; hLocation = ""; 
+                        hDistribution = ""; hDockCode = ""; hRev = ""; hRemark = "";
+                        hCycleIssue = 0; hPage = 0; hCycleNumber = 0;
+                        hOrderDate = null; hDeliveryDate = null;
+                        hOrderTime = null; hDeliveryTime = null;
+                        fSupAppv = ""; fSupPrep = ""; fTransDeliv = ""; fTransRecv = ""; fDdmiRecv = ""; fDdmiOrd = "";
                     }
 
                     void FlushDataKeTabel()
@@ -167,16 +202,18 @@ namespace RFIDP2P3_API.Controllers
                                 hOrderTime.HasValue ? (object)hOrderTime.Value : DBNull.Value,
                                 hDeliveryDate.HasValue ? (object)hDeliveryDate.Value : DBNull.Value,
                                 hDeliveryTime.HasValue ? (object)hDeliveryTime.Value : DBNull.Value,
-                                hDistribution, hDockCode, hCycle, hRev, hPage == 0 ? DBNull.Value : hPage, hRemark,
+                                hDistribution, 
+                                hDockCode, 
+                                hCycleIssue,
+                                hCycleNumber,
+                                hRev, 
+                                hPage == 0 ? DBNull.Value : hPage, hRemark,
                                 fSupAppv, fSupPrep, fTransDeliv, fTransRecv, fDdmiRecv, fDdmiOrd,
                                 d[0], d[1], d[2], d[3], d[4], d[5], d[6], d[7], d[8]
                             );
                         }
                         
                         bufferDetails.Clear();
-                        idxNo = -1; idxBackNo = -1; idxPartNo = -1; idxPartName = -1;
-                        idxQtyBox = -1; idxTotalKbn = -1; idxTotalQty = -1; idxAct = -1; idxLack = -1;
-                        fSupAppv = ""; fSupPrep = ""; fTransDeliv = ""; fTransRecv = ""; fDdmiRecv = ""; fDdmiOrd = "";
                     }
 
                     for (int r = 0; r < dtExcel.Rows.Count; r++)
@@ -197,8 +234,11 @@ namespace RFIDP2P3_API.Controllers
 
                                 string valClean = cellVal.Replace(" ", "");
 
-                                if (valClean.StartsWith("DNNO") || valClean.StartsWith("SUPPLIERCODE"))
+                                if (valClean.StartsWith("PTDAIHATSU") || valClean.StartsWith("SUPPLIERCODE"))
+                                {
                                     FlushDataKeTabel();
+                                    ResetHeaderAndSignatures();
+                                }
 
                                 if (valClean.StartsWith("DNNO")) hDnNo = FindValueRight(row, c);
                                 else if (valClean.StartsWith("SUPPLIERCODE")) hSupplierCode = FindValueRight(row, c);
@@ -206,11 +246,15 @@ namespace RFIDP2P3_API.Controllers
                                 else if (valClean.StartsWith("LOCATION")) hLocation = FindValueRight(row, c);
                                 else if (valClean.StartsWith("DISTRIBUTION")) hDistribution = FindValueRight(row, c);
                                 else if (valClean.StartsWith("DOCKCODE")) hDockCode = FindValueRight(row, c);
-                                else if (valClean.StartsWith("CYCLEISSUE")) int.TryParse(FindValueRight(row, c), out hCycle);
+                                else if (valClean.StartsWith("CYCLEISSUE"))
+                                    int.TryParse(FindValueRight(row, c), out hCycleIssue);
+                                else if (valClean.StartsWith("CYCLENUMBER") || valClean.StartsWith("NOCYCLE") ||
+                                         valClean.StartsWith("CYCLENO"))
+                                    int.TryParse(FindValueRight(row, c), out hCycleNumber);
                                 else if (valClean.StartsWith("REV")) hRev = FindValueRight(row, c);
                                 else if (valClean.StartsWith("PAGE")) int.TryParse(FindValueRight(row, c), out hPage);
                                 else if (valClean.StartsWith("REMARK")) hRemark = FindValueRight(row, c);
-                                
+
                                 else if (valClean == "DATE" || valClean.StartsWith("DATE:"))
                                 {
                                     string dateStr = FindValueRight(row, c);
@@ -220,17 +264,18 @@ namespace RFIDP2P3_API.Controllers
                                         else hDeliveryDate = dt.Date;
                                     }
                                 }
-                                
-                                else if (valClean.StartsWith("TIME/SEQ") || valClean == "TIME" || valClean.StartsWith("TIME:"))
+
+                                else if (valClean.StartsWith("TIME/SEQ") || valClean == "TIME" ||
+                                         valClean.StartsWith("TIME:"))
                                 {
                                     string timeStr = FindValueRight(row, c);
-            
+
                                     if (DateTime.TryParse(timeStr, out DateTime dtTime))
                                     {
                                         if (c < 10) hOrderTime = dtTime.TimeOfDay;
                                         else hDeliveryTime = dtTime.TimeOfDay;
                                     }
-                                    
+
                                     else if (TimeSpan.TryParse(timeStr, out TimeSpan ts))
                                     {
                                         if (c < 10) hOrderTime = ts;
@@ -238,30 +283,52 @@ namespace RFIDP2P3_API.Controllers
                                     }
                                 }
 
-                                else if (valClean == "APPROVED" || valClean.StartsWith("APPROVEDBY")) fSupAppv = FindSignature(r, c);
-                                else if (valClean == "PREPARED" || valClean.StartsWith("PREPAREDBY")) fSupPrep = FindSignature(r, c);
+                                else if (valClean == "APPROVED" || valClean.StartsWith("APPROVEDBY"))
+                                    fSupAppv = FindSignature(r, c);
+                                else if (valClean == "PREPARED" || valClean.StartsWith("PREPAREDBY"))
+                                    fSupPrep = FindSignature(r, c);
+                                else if (valClean == "DELIVERY" || valClean.StartsWith("DELIVERYBY"))
+                                    fTransDeliv = FindSignature(r, c);
                                 else if (valClean == "RECEIVER" && c < 22) fTransRecv = FindSignature(r, c);
                                 else if (valClean == "RECEIVER" && c >= 22) fDdmiRecv = FindSignature(r, c);
+                                else if (valClean == "ORDER" || valClean.StartsWith("ORDERBY"))
+                                    fDdmiOrd = FindSignature(r, c);
 
-                                else if (cellVal == "NO" && idxNo == -1) idxNo = c;
-                                else if (cellVal == "BACK NO" && idxBackNo == -1) idxBackNo = c;
-                                else if ((cellVal == "PART NO" || cellVal == "P" || cellVal.StartsWith("PART N")) && idxPartNo == -1) idxPartNo = c;
-                                else if (cellVal == "PART NAME" && idxPartName == -1) idxPartName = c;
-                                else if (cellVal.Contains("QTY") && cellVal.Contains("BOX") && idxQtyBox == -1) idxQtyBox = c;
-                                else if (cellVal.Contains("TOTAL") && cellVal.Contains("KANBAN") && idxTotalKbn == -1) idxTotalKbn = c;
-                                else if (cellVal.Contains("TOTAL QTY") && idxTotalQty == -1) idxTotalQty = c;
-                                else if (cellVal == "ACT" && idxAct == -1) idxAct = c;
-                                else if (cellVal == "LACK" && idxLack == -1) idxLack = c;
+                                else if (cellVal == "NO") idxNo = c;
+                                else if (cellVal == "BACK NO") idxBackNo = c;
+                                else if (cellVal == "PART NO") idxPartNo = c;
+                                else if (cellVal == "PART NAME") idxPartName = c;
+                                else if (cellVal.Contains("QTY") && cellVal.Contains("BOX")) idxQtyBox = c;
+                                else if (cellVal.Contains("TOTAL") && cellVal.Contains("KANBAN")) idxTotalKbn = c;
+                                else if (cellVal.Contains("TOTAL QTY")) idxTotalQty = c;
+                                else if (cellVal == "ACT") idxAct = c;
+                                else if (cellVal == "LACK") idxLack = c;
                             }
 
-                            if (idxNo != -1 && idxPartNo != -1) isInsideItemTable = true;
+                            if (idxNo != -1 && idxPartNo != -1 && colA == "NO") 
+                                isInsideItemTable = true;
                         }
                         
                         else if (isInsideItemTable)
                         {
+                            string fullRowStr = string.Join("", row.ItemArray).ToUpper();
+                            if (fullRowStr.Contains("ACT") || fullRowStr.Contains("LACK"))
+                            {
+                                for (int c = 0; c < row.ItemArray.Length; c++)
+                                {
+                                    string cellVal = (row[c]?.ToString()?.Trim() ?? "").ToUpper();
+                                    if (cellVal == "ACT") idxAct = c;
+                                    else if (cellVal == "LACK") idxLack = c;
+                                }
+                                continue;
+                            }
+                            
                             string SafeGetString(int idx) => (idx != -1 && idx < row.ItemArray.Length) ? row[idx]?.ToString()?.Trim() ?? "" : "";
                             int SafeGetInt(int idx) {
-                                if (idx != -1 && idx < row.ItemArray.Length && int.TryParse(row[idx]?.ToString()?.Trim(), out int val)) return val;
+                                if (idx != -1 && idx < row.ItemArray.Length) {
+                                    string strVal = row[idx]?.ToString()?.Trim() ?? "";
+                                    if (int.TryParse(strVal, out int val)) return val;
+                                }
                                 return 0;
                             }
 

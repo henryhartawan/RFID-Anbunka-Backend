@@ -209,7 +209,7 @@ namespace RFIDP2P3_API.Controllers
 
 		                                if (!string.IsNullOrEmpty(spRemarks))
 		                                {
-		                                    errorLogs.Add($"Row {rowCount}: {spRemarks}");
+			                                errorLogs.Add($"Row {rowCount} (Unique Code: <strong>{uniqueCode}</strong>) - {spRemarks}");
 		                                }
 		                            }
 		                            rowCount++;
