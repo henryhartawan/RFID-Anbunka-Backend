@@ -18,6 +18,7 @@
         public string? MandatoryPdt { get; set; }
         public string? OtherPdt { get; set; }
         public string? TimePdt { get; set; }
+        public string? ProductionTarget { get; set; }
         
         public string? UserLogin { get; set; }
 		public string? CreatedBy { get; set; }

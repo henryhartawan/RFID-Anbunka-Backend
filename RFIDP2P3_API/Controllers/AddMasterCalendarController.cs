@@ -52,6 +52,7 @@ namespace RFIDP2P3_API.Controllers
                         MandatoryPdt = sdr["MandatoryPdt"].ToString(),
                         OtherPdt = sdr["OtherPdt"].ToString(),
                         TimePdt = sdr["TimePdt"].ToString(),
+                        ProductionTarget = sdr["ProductionTarget"].ToString(),
                         CreatedBy = sdr["CreatedBy"].ToString(),
                         CreatedDate = sdr["CreatedDate"] != DBNull.Value ? Convert.ToDateTime(sdr["CreatedDate"]).ToString("yyyy-MM-dd HH:mm") : "",
                         UpdatedBy = sdr["UpdatedBy"].ToString(),
@@ -92,6 +93,7 @@ namespace RFIDP2P3_API.Controllers
                 dt.Columns.Add("OtherPdt", typeof(int));
                 dt.Columns.Add("TimePdt", typeof(int));
                 dt.Columns.Add("Remarks", typeof(string));
+                dt.Columns.Add("ProductionTarget", typeof(int));
 
                 using (var stream = new MemoryStream())
                 {
@@ -135,16 +137,37 @@ namespace RFIDP2P3_API.Controllers
                             dr["CalendarDate"] = calDate;
                             dr["Shift"] = row.Cell(3).GetString();
                             dr["CalendarStatus"] = row.Cell(4).GetValue<int>();
-                            dr["WorkingTime"] = row.Cell(5).GetValue<int>();
-                            dr["OEE"] = row.Cell(6).IsEmpty() ? 0m : row.Cell(6).GetValue<decimal>();
-                            dr["CT"] = row.Cell(7).IsEmpty() ? 0m : row.Cell(7).GetValue<decimal>();
-
-                            dr["EarlyOvertime"] = row.Cell(8).IsEmpty() ? DBNull.Value : row.Cell(8).GetValue<int>();
-                            dr["EndOvertime"] = row.Cell(9).IsEmpty() ? DBNull.Value : row.Cell(9).GetValue<int>();
-                            dr["MandatoryPdt"] = row.Cell(10).IsEmpty() ? DBNull.Value : row.Cell(10).GetValue<int>();
-                            dr["OtherPdt"] = row.Cell(11).IsEmpty() ? DBNull.Value : row.Cell(11).GetValue<int>();
-                            dr["TimePdt"] = row.Cell(12).IsEmpty() ? DBNull.Value : row.Cell(12).GetValue<int>();
                             
+                            int workingTime = row.Cell(5).GetValue<int>();
+                            decimal oee = row.Cell(6).IsEmpty() ? 0m : row.Cell(6).GetValue<decimal>();
+                            if (oee > 0 && oee <= 1m) 
+                                oee = oee * 100m;
+                            
+                            decimal ct = row.Cell(7).IsEmpty() ? 0m : row.Cell(7).GetValue<decimal>();
+                            
+                            int earlyOvt = row.Cell(8).IsEmpty() ? 0 : row.Cell(8).GetValue<int>();
+                            int endOvt = row.Cell(9).IsEmpty() ? 0 : row.Cell(9).GetValue<int>();
+                            int mandPdt = row.Cell(10).IsEmpty() ? 0 : row.Cell(10).GetValue<int>();
+                            int otherPdt = row.Cell(11).IsEmpty() ? 0 : row.Cell(11).GetValue<int>();
+                            int timePdt = row.Cell(12).IsEmpty() ? 0 : row.Cell(12).GetValue<int>();
+                      
+                            int totalPdt = mandPdt + otherPdt + timePdt;
+                            int netTime = workingTime + earlyOvt + endOvt - totalPdt;
+                            
+                            int productionTarget = 0;
+                            if (ct > 0)
+                                productionTarget = (int)Math.Floor((netTime / ct) * (oee / 100m));
+                                            
+                            dr["WorkingTime"] = workingTime;
+                            dr["OEE"] = oee;
+                            dr["CT"] = ct;
+
+                            dr["EarlyOvertime"] = earlyOvt;
+                            dr["EndOvertime"] = endOvt;
+                            dr["MandatoryPdt"] = mandPdt;
+                            dr["OtherPdt"] = otherPdt;
+                            dr["TimePdt"] = timePdt;
+                            dr["ProductionTarget"] = productionTarget;
                             dr["Remarks"] = row.Cell(13).GetString();
 
                             dt.Rows.Add(dr);
