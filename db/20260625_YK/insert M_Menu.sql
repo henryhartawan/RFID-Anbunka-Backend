@@ -1,3 +1,4 @@
+INSERT INTO M_Menu VALUES (125, 'ProcessMonthlyPlan', 'Process Monthly Plan', 125, 12)
 INSERT INTO M_Menu VALUES (126, 'ParameterRecoverySct', 'Parameter Recovery Special CT', 126, 12)
 INSERT INTO M_Menu VALUES (127, 'MonthlyPlanResults', 'Monthly Plan Results', 127, 12)
 INSERT INTO M_Menu VALUES (128, 'TargetStockParam', 'Target Stock Parameters', 128, 12)
