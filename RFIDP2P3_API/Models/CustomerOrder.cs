@@ -8,5 +8,6 @@ public class CustomerOrder
     public string? Suffix { get; set; }
     public int DayNumber { get; set; }
     public decimal ValueData { get; set; }
+    public int RevisionNo { get; set; }
     public string? Remarks { get; set; }
 }

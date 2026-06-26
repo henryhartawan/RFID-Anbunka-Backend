@@ -1,0 +1,5 @@
+INSERT INTO M_Menu VALUES (126, 'ParameterRecoverySct', 'Parameter Recovery Special CT', 126, 12)
+INSERT INTO M_Menu VALUES (127, 'MonthlyPlanResults', 'Monthly Plan Results', 127, 12)
+INSERT INTO M_Menu VALUES (128, 'TargetStockParam', 'Target Stock Parameters', 128, 12)
+INSERT INTO M_Menu VALUES (129, 'TargetStockResult', 'Target Stock Result', 129, 12)
+INSERT INTO M_Menu VALUES (130, 'OrderDdmiHistory', 'Order Ddmi History', 130, 13)

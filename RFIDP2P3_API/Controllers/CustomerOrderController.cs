@@ -15,9 +15,11 @@ namespace RFIDP2P3_API.Controllers
     public class CustomerOrderController : Controller
     {
         private readonly string _configuration;
+        private readonly IConfiguration _config;
 
         public CustomerOrderController(IConfiguration configuration)
         {
+            _config = configuration;
             _configuration = configuration.GetConnectionString("DefaultConnection");
             System.Text.Encoding.RegisterProvider(System.Text.CodePagesEncodingProvider.Instance);
         }
@@ -32,6 +34,12 @@ namespace RFIDP2P3_API.Controllers
             {
                 periode = periodeElement.GetString() ?? "";
             }
+            
+            int revisionNo = -1;
+            if (body.TryGetProperty("RevisionNo", out JsonElement revElement))
+            {
+                revisionNo = revElement.GetInt32();
+            }
 
             try
             {
@@ -40,6 +48,7 @@ namespace RFIDP2P3_API.Controllers
                 {
                     cmd.CommandType = CommandType.StoredProcedure;
                     cmd.Parameters.AddWithValue("@Periode", periode);
+                    cmd.Parameters.AddWithValue("@RevisionNo", revisionNo);
 
                     conn.Open();
                     SqlDataReader sdr = cmd.ExecuteReader();
@@ -53,7 +62,8 @@ namespace RFIDP2P3_API.Controllers
                             Source = sdr["Source"].ToString(),
                             Suffix = sdr["Suffix"].ToString(),
                             DayNumber = Convert.ToInt32(sdr["DayNumber"]),
-                            ValueData = Convert.ToDecimal(sdr["ValueData"])
+                            ValueData = Convert.ToDecimal(sdr["ValueData"]),
+                            RevisionNo = Convert.ToInt32(sdr["RevisionNo"])
                         });
                     }
 
@@ -61,6 +71,43 @@ namespace RFIDP2P3_API.Controllers
                 }
 
                 return CustomerOrders;
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ex.Message);
+            }
+        }
+        
+        [HttpPost]
+        public IActionResult GetRevisions([FromBody] JsonElement body)
+        {
+            string periode = "";
+            if (body.TryGetProperty("Periode", out JsonElement periodeElement))
+            {
+                periode = periodeElement.GetString() ?? "";
+            }
+
+            List<int> revisions = new List<int>();
+
+            try
+            {
+                using (SqlConnection conn = new SqlConnection(_configuration))
+                using (SqlCommand cmd = new SqlCommand("sp_M_Customer_Order_GetRevisions", conn))
+                {
+                    cmd.CommandType = CommandType.StoredProcedure;
+                    cmd.Parameters.AddWithValue("@Periode", periode);
+
+                    conn.Open();
+                    using (SqlDataReader sdr = cmd.ExecuteReader())
+                    {
+                        while (sdr.Read())
+                        {
+                            revisions.Add(Convert.ToInt32(sdr["RevisionNo"]));
+                        }
+                    }
+                    conn.Close();
+                }
+                return Ok(revisions);
             }
             catch (Exception ex)
             {
@@ -82,6 +129,7 @@ namespace RFIDP2P3_API.Controllers
 
             try
             {
+                bool isTestingMode = _config.GetValue<bool>("AppSettings:IsTestingMode");
                 List<string> errorLogs = new List<string>();
 
                 DataTable dtUpload = new DataTable();
@@ -93,6 +141,9 @@ namespace RFIDP2P3_API.Controllers
 
                 string[] validSources = { "SAP", "KAP", "DCWA", "TMMIN", "DDMI" };
 
+                bool hasPastPeriod = false; 
+                string currentPeriodeStr = DateTime.Now.ToString("yyyy-MM");
+                
                 using (var stream = file.OpenReadStream())
                 using (var reader = ExcelReaderFactory.CreateReader(stream))
                 {
@@ -111,14 +162,14 @@ namespace RFIDP2P3_API.Controllers
                     {
                         rowIndex++;
 
-                        string periode = row[0]?.ToString()?.Trim();
+                        string periodeRaw = row[0]?.ToString()?.Trim()?.ToUpper() ?? "";
                         string source = row[1]?.ToString()?.Trim()?.ToUpper();
                         string suffix = row[2]?.ToString()?.Trim()?.ToUpper();
-
-                        if (string.IsNullOrEmpty(periode) && string.IsNullOrEmpty(source) && string.IsNullOrEmpty(suffix))
+                        
+                        if (string.IsNullOrEmpty(periodeRaw) && string.IsNullOrEmpty(source) && string.IsNullOrEmpty(suffix))
                             continue;
                             
-                        if (string.IsNullOrEmpty(periode) || string.IsNullOrEmpty(source) || string.IsNullOrEmpty(suffix))
+                        if (string.IsNullOrEmpty(periodeRaw) || string.IsNullOrEmpty(source) || string.IsNullOrEmpty(suffix))
                         {
                             errorLogs.Add($"Row {rowIndex}: Periode, Source, and Suffix cannot be empty.");
                             continue;
@@ -130,12 +181,16 @@ namespace RFIDP2P3_API.Controllers
                             continue;
                         }
 
-                        if (!DateTime.TryParseExact(periode, "yyyy-MM", null, System.Globalization.DateTimeStyles.None,
-                                out DateTime parsedPeriode))
+                        string cleanPeriode = periodeRaw.Replace("-REV", "").Trim();
+
+                        if (!DateTime.TryParseExact(cleanPeriode, "yyyy-MM", null, System.Globalization.DateTimeStyles.None, out DateTime parsedPeriode))
                         {
-                            errorLogs.Add($"Row {rowIndex}: Invalid Period format '{periode}'. It must be yyyy-MM.");
+                            errorLogs.Add($"Row {rowIndex}: Invalid Period format '{periodeRaw}'. It must be yyyy-MM or yyyy-MM-REV.");
                             continue;
                         }
+                        
+                        if (cleanPeriode.CompareTo(currentPeriodeStr) < 0)
+                            hasPastPeriod = true;
 
                         int daysInMonth = DateTime.DaysInMonth(parsedPeriode.Year, parsedPeriode.Month);
 
@@ -147,11 +202,9 @@ namespace RFIDP2P3_API.Controllers
                             {
                                 if (decimal.TryParse(row[colIndex].ToString(), out decimal valueData))
                                 {
-                                    decimal roundedValue = Math.Round(valueData, 0, MidpointRounding.AwayFromZero);
-
-                                    if (roundedValue > 0)
+                                    if (valueData > 0)
                                     {
-                                        dtUpload.Rows.Add(periode, source, suffix, day, roundedValue);
+                                        dtUpload.Rows.Add(periodeRaw, source, suffix, day, valueData);
                                     }
                                 }
                             }
@@ -173,12 +226,19 @@ namespace RFIDP2P3_API.Controllers
     
                     combinedErrors += "</div>";
 
-                    return Ok(new[] { new { Remarks = combinedErrors } });
+                    return Ok(new[] { new
+                    {
+                        Remarks = combinedErrors, 
+                        IsPastPeriod = false
+                    } });
                 }
 
                 if (dtUpload.Rows.Count == 0)
-                    return Ok(new[]
-                        { new { Remarks = "No valid data with value > 0 found in the Excel file." } });
+                    return Ok(new[] { new
+                    {
+                        Remarks = "No valid data with value > 0 found in the Excel file.",
+                        IsPastPeriod = false
+                    } });
 
                 using (SqlConnection conn = new SqlConnection(_configuration))
                 using (SqlCommand cmd = new SqlCommand("sp_M_Customer_Order_Upload", conn))
@@ -188,7 +248,8 @@ namespace RFIDP2P3_API.Controllers
                     SqlParameter tvpParam = cmd.Parameters.AddWithValue("@OrderData", dtUpload);
                     tvpParam.SqlDbType = SqlDbType.Structured;
                     tvpParam.TypeName = "dbo.CustomerOrderType";
-
+                    
+                    cmd.Parameters.AddWithValue("@IsTestingMode", isTestingMode);
                     cmd.Parameters.Add("@Remarks", SqlDbType.VarChar, -1).Direction = ParameterDirection.Output;
 
                     conn.Open();
@@ -198,14 +259,63 @@ namespace RFIDP2P3_API.Controllers
                     conn.Close();
 
                     if (!string.IsNullOrEmpty(spRemarks))
-                        return Ok(new[] { new { Remarks = "Database Error: " + spRemarks } });
+                        return Ok(new[] { new
+                        {
+                            Remarks = "Database Error: " + spRemarks, 
+                            IsPastPeriod = false
+                        } });
                 }
 
-                return Ok(new[] { new { Remarks = "" } });
+                return Ok(new[] { new
+                {
+                    Remarks = "", 
+                    IsPastPeriod = hasPastPeriod
+                } });
             }
             catch (Exception ex)
             {
-                return Ok(new[] { new { Remarks = "System Error: " + ex.Message } });
+                return Ok(new[] { new
+                {
+                    Remarks = "System Error: " + ex.Message, 
+                    IsPastPeriod = false
+                } });
+            }
+        }
+        
+        [HttpPost]
+        public IActionResult Delete([FromBody] JsonElement body)
+        {
+            string periode = "";
+            if (body.TryGetProperty("Periode", out JsonElement periodeElement))
+                periode = periodeElement.GetString() ?? "";
+
+            if (string.IsNullOrEmpty(periode))
+                return BadRequest("Period cannot be empty.");
+
+            try
+            {
+                using (SqlConnection conn = new SqlConnection(_configuration))
+                using (SqlCommand cmd = new SqlCommand("sp_M_Customer_Order_Delete", conn))
+                {
+                    cmd.CommandType = CommandType.StoredProcedure;
+                    cmd.Parameters.AddWithValue("@Periode", periode);
+                    cmd.Parameters.Add("@Remarks", SqlDbType.VarChar, -1).Direction = ParameterDirection.Output;
+
+                    conn.Open();
+                    cmd.ExecuteNonQuery();
+
+                    string spRemarks = Convert.ToString(cmd.Parameters["@Remarks"].Value);
+                    conn.Close();
+
+                    if (!string.IsNullOrEmpty(spRemarks))
+                        return Ok(new { Remarks = spRemarks });
+                }
+
+                return Ok(new { Remarks = "" });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest("System Error: " + ex.Message);
             }
         }
     }

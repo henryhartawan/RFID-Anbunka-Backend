@@ -1,0 +1,2 @@
+ALTER TABLE dbo.T_Daily_Order_DDMI_Headers 
+DROP CONSTRAINT UQ_DnNo;

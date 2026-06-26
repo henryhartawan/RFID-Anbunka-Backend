@@ -2,6 +2,7 @@
 using System.Data;
 using System.Data.SqlClient;
 using System.Globalization;
+using System.Text.Json;
 using ExcelDataReader;
 using RFIDP2P3_API.Helpers;
 using RFIDP2P3_API.Models.Request;
@@ -296,6 +297,43 @@ namespace RFIDP2P3_API.Controllers
                 return BadRequest("<div style='text-align: left; padding: 10px; background: #fdf2f2; border: 1px solid #f2dede; border-radius: 5px; color: #a94442; z-index: 9999;'>" +
                                   "Terjadi kesalahan pada sistem saat memproses file. Silakan coba beberapa saat lagi atau hubungi administrator." +
                                   "</div>");
+            }
+        }
+        
+        [HttpPost]
+        public IActionResult Delete([FromBody] JsonElement body)
+        {
+            string periode = "";
+            if (body.TryGetProperty("Periode", out JsonElement periodeElement))
+                periode = periodeElement.GetString() ?? "";
+
+            if (string.IsNullOrEmpty(periode))
+                return BadRequest("Period cannot be empty.");
+
+            try
+            {
+                using (SqlConnection conn = new SqlConnection(_configuration))
+                using (SqlCommand cmd = new SqlCommand("sp_Delete_T_Calc_Order_Firm", conn))
+                {
+                    cmd.CommandType = CommandType.StoredProcedure;
+                    cmd.Parameters.AddWithValue("@Periode", periode);
+                    cmd.Parameters.Add("@Remarks", SqlDbType.VarChar, -1).Direction = ParameterDirection.Output;
+
+                    conn.Open();
+                    cmd.ExecuteNonQuery();
+
+                    string spRemarks = Convert.ToString(cmd.Parameters["@Remarks"].Value);
+                    conn.Close();
+
+                    if (!string.IsNullOrEmpty(spRemarks))
+                        return Ok(new { Remarks = spRemarks });
+                }
+
+                return Ok(new { Remarks = "" });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest("System Error: " + ex.Message);
             }
         }
     }

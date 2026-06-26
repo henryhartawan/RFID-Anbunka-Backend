@@ -149,7 +149,12 @@ namespace RFIDP2P3_API.Controllers
                             if (rowIdx + i < dtExcel.Rows.Count)
                             {
                                 string val = dtExcel.Rows[rowIdx + i][colIdx]?.ToString()?.Trim() ?? "";
-                                if (!string.IsNullOrWhiteSpace(val) && val != "(" && val != ")" && val != ")(" && !val.ToUpper().StartsWith("NOTE"))
+                                string vUpper = val.ToUpper();
+                                
+                                if (vUpper.Contains("PT DAIHATSU") || vUpper.Contains("SUPPLIER CODE") || vUpper.StartsWith("NOTE"))
+                                    break;
+                                
+                                if (!string.IsNullOrWhiteSpace(val) && val != "(" && val != ")" && val != ")(")
                                 {
                                     List<string> signatureParts = new List<string>();
                                     int tempCol = colIdx;
@@ -393,16 +398,19 @@ namespace RFIDP2P3_API.Controllers
         {
             try
             {
-                if (!payload.TryGetProperty("UploadDate", out JsonElement dateElement))
-                    return BadRequest("UploadDate is required.");
+                if (!payload.TryGetProperty("UploadBatchKey", out JsonElement keyElement))
+                    return BadRequest("UploadBatchKey is required.");
 
-                string uploadDate = dateElement.GetString();
+                string uploadBatchKey = keyElement.GetString() ?? "";
+
+                var userId = User.FindFirst("PIC_ID")?.Value ?? "System";
 
                 using (SqlConnection conn = new SqlConnection(_connectionString))
                 using (SqlCommand cmd = new SqlCommand("sp_Delete_T_Daily_Order_DDMI", conn))
                 {
                     cmd.CommandType = CommandType.StoredProcedure;
-                    cmd.Parameters.AddWithValue("@UploadDate", uploadDate);
+                    cmd.Parameters.AddWithValue("@UploadBatchKey", uploadBatchKey);
+                    cmd.Parameters.AddWithValue("@PIC_ID", userId);
             
                     SqlParameter remarksParam = new SqlParameter("@Remarks", SqlDbType.VarChar, -1)
                     {
@@ -413,22 +421,17 @@ namespace RFIDP2P3_API.Controllers
                     conn.Open(); 
                     cmd.ExecuteNonQuery();
 
-                    string remarks = remarksParam.Value?.ToString();
+                    string remarks = remarksParam.Value?.ToString() ?? "";
 
                     if (!string.IsNullOrEmpty(remarks))
-                    {
-                        if (remarks.StartsWith("System Error"))
-                            return StatusCode(500, "A system error occurred while deleting data.");
-
                         return BadRequest(remarks); 
-                    }
                 }
         
                 return Ok("success");
             }
             catch (Exception ex)
             {
-                return StatusCode(500, "A system error occurred. Please try again later.");
+                return StatusCode(500, "A system error occurred. Please try again later. " +ex.Message);
             }
         }
     }

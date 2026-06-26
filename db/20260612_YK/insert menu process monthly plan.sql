@@ -1,0 +1,1 @@
+INSERT INTO M_Menu VALUES (125, 'ProcessMonthlyPlan', 'Process Monthly Plan', 125, 12)
