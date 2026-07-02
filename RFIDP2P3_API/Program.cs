@@ -1,3 +1,4 @@
+using System.IdentityModel.Tokens.Jwt;
 using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
@@ -9,6 +10,8 @@ using RFIDP2P3_API.Services.Interfaces;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.IdentityModel.Tokens;
 using RFIDP2P3_API.Middlewares;
+
+JwtSecurityTokenHandler.DefaultInboundClaimTypeMap.Clear();
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -117,7 +120,14 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-app.UseHttpsRedirection();
+bool enableHttpsRedirection = builder.Configuration.GetValue<bool>("EnableHttpsRedirection", false);
+
+if (enableHttpsRedirection)
+{
+    app.UseHsts();
+    app.UseHttpsRedirection();
+}
+
 app.UseCors("AllowSpecificOrigin");
 //app.UseMiddleware<APIKeyMiddleware>();
 

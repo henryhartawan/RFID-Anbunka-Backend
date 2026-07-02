@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using System.Data;
 using System.Data.SqlClient;
+using System.IdentityModel.Tokens.Jwt;
 using System.Text.Json;
 using RFIDP2P3_API.Models.Request;
 
@@ -115,7 +116,7 @@ namespace RFIDP2P3_API.Controllers
             int revisionNo = requests.First().RevisionNo;
             
             string jsonData = System.Text.Json.JsonSerializer.Serialize(requests);
-            var userLogin = User.FindFirst("PIC_ID")?.Value ?? "Admin";
+            var userLogin = User.FindFirst(JwtRegisteredClaimNames.Sub)?.Value ?? "Admin";
 
             using (SqlConnection conn = new SqlConnection(_configuration))
             using (SqlCommand cmd = new SqlCommand("sp_Update_Monthly_Plan_Unique", conn))

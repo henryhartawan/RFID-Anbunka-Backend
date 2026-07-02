@@ -1,5 +1,6 @@
 ﻿using System.Data;
 using System.Data.SqlClient;
+using System.IdentityModel.Tokens.Jwt;
 using System.Text.Json;
 using ExcelDataReader;
 using Microsoft.AspNetCore.Mvc;
@@ -403,7 +404,7 @@ namespace RFIDP2P3_API.Controllers
 
                 string uploadBatchKey = keyElement.GetString() ?? "";
 
-                var userId = User.FindFirst("PIC_ID")?.Value ?? "System";
+                var userId = User.FindFirst(JwtRegisteredClaimNames.Sub)?.Value ?? "System";
 
                 using (SqlConnection conn = new SqlConnection(_connectionString))
                 using (SqlCommand cmd = new SqlCommand("sp_Delete_T_Daily_Order_DDMI", conn))

@@ -2,6 +2,7 @@
 using System.Data;
 using System.Data.SqlClient;
 using System.Globalization;
+using System.IdentityModel.Tokens.Jwt;
 using ClosedXML.Excel;
 using ExcelDataReader;
 using RFIDP2P3_API.Helpers;
@@ -183,7 +184,7 @@ namespace RFIDP2P3_API.Controllers
                 
                 if (uploadDict.Count == 0) return BadRequest("No data available to process. All inputs are empty.");
                 
-                var userId = User.FindFirst("PIC_ID")?.Value ?? "SystemUpload";
+                var userId = User.FindFirst(JwtRegisteredClaimNames.Sub)?.Value?? "SystemUpload";
                 
                 using (SqlConnection conn = new SqlConnection(_configuration))
                 {

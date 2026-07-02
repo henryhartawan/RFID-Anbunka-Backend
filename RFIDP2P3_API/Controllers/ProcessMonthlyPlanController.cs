@@ -2,6 +2,7 @@
 using RFIDP2P3_API.Models;
 using System.Data;
 using System.Data.SqlClient;
+using System.IdentityModel.Tokens.Jwt;
 using RFIDP2P3_API.Models.Request;
 
 namespace RFIDP2P3_API.Controllers
@@ -73,7 +74,7 @@ namespace RFIDP2P3_API.Controllers
                     string spName = request.Calc_Type == "TargetStock" ? "sp_Calc_Target_Stock" : "sp_Calc_Monthly_Plan";
                     using (SqlCommand cmd = new SqlCommand(spName, conn))
                     {
-                        var userId = User.FindFirst("PIC_ID")?.Value ?? "System";
+                        var userId = User.FindFirst(JwtRegisteredClaimNames.Sub)?.Value ?? "System";
 
                         cmd.CommandType = CommandType.StoredProcedure;
 
