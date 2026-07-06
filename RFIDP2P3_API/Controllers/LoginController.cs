@@ -76,7 +76,8 @@ namespace RFIDP2P3_API.Controllers
 				string? UserGroup_Id = "";
 				string? UserGroup_Name = "";
 				string? PlantId = "";
-				string? MFAStatus = "";
+                string? SupplierCode = "";
+                string? MFAStatus = "";
 
                 List<User> userLogin = new();
 
@@ -88,6 +89,7 @@ namespace RFIDP2P3_API.Controllers
 					UserGroup_Id = sdr["UserGroupID"].ToString();
 					UserGroup_Name = sdr["UserGroupName"].ToString();
 					PlantId = sdr["PlantId"].ToString();
+                    SupplierCode = sdr["SupplierCode"].ToString();
                     MFAStatus = sdr["MFAStatus"].ToString();
                 }
 
@@ -143,6 +145,7 @@ namespace RFIDP2P3_API.Controllers
 								UserGroup_Id = UserGroup_Id,
 								UserGroup_Name = UserGroup_Name,
 								PlantId = PlantId,
+                                SupplierCode = SupplierCode,
                                 Privileges = privileges,
                                 MFAStatus = MFAStatus
                             });

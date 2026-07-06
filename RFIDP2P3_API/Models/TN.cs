@@ -4,5 +4,6 @@
     {
         public string? Periode { get; set; }
         public string? Supplier_Code { get; set; }
+        public string? TN_No { get; set; }
     }
 }

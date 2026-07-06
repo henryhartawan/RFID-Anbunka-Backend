@@ -168,8 +168,9 @@ namespace RFIDP2P3_API.Controllers
                 cmd.CommandType = CommandType.StoredProcedure;
                 cmd.Parameters.Add("@Remarks", SqlDbType.VarChar, 100).Direction = ParameterDirection.Output;
 
-                cmd.Parameters.Add(new("@DockCode", cil.DockCode));
+                cmd.Parameters.Add(new("@CycleIssueID", cil.@CycleIssueID));
                 cmd.Parameters.Add(new("@RouteCode", cil.RouteCode));
+                cmd.Parameters.Add(new("@DockCode", cil.DockCode));
                 cmd.Parameters.Add(new("@Operation", cil.Operation));
                 cmd.Parameters.Add(new("@CycleArrival", cil.CycleArrival));
                 cmd.Parameters.Add(new("@TimeArrival", cil.TimeArrival));

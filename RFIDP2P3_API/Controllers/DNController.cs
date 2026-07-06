@@ -28,6 +28,7 @@ namespace RFIDP2P3_API.Controllers
                 cmd.CommandType = CommandType.StoredProcedure;
                 cmd.Parameters.Add(new("@Periode_ID", dn.Periode));
                 cmd.Parameters.Add(new("@Supplier_Code", dn.Supplier_Code));
+                cmd.Parameters.Add(new("@DN_No", dn.DN_No));
                 conn.Open();
                 
                 using (var da = new SqlDataAdapter(cmd))

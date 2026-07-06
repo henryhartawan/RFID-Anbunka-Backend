@@ -29,6 +29,7 @@ namespace RFIDP2P3_API.Controllers
                 cmd.Parameters.Add(new("@From", rr.From));
                 cmd.Parameters.Add(new("@To", rr.To));
                 cmd.Parameters.Add(new("@Line", rr.Line));
+                cmd.Parameters.Add(new("@DN_No", rr.DN_No));
                 conn.Open();
                 
                 using (var da = new SqlDataAdapter(cmd))
