@@ -30,7 +30,6 @@ namespace RFIDP2P3_API.Controllers
                 if (ps.Type == "PL") cmd = new SqlCommand("sp_Inq_T_Calc_Plan_Supply_PL", conn);
                 else cmd = new SqlCommand("sp_Inq_T_Calc_Plan_Supply_NonPL", conn);
 
-                cmd.CommandTimeout = 300;
                 cmd.CommandType = CommandType.StoredProcedure;
                 cmd.Parameters.Add(new("@Periode_ID", ps.Prod_Date));
                 cmd.Parameters.Add(new("@LineOrderCode", ps.Line));

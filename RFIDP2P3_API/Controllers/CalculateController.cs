@@ -60,12 +60,20 @@ namespace RFIDP2P3_API.Controllers
                 conn.Open();
 
                 SqlCommand cmd;
-                if (calc.Type == "1") cmd = new SqlCommand("sp_Jobs_Calc_Anbunka1", conn);
-                else cmd = new SqlCommand("sp_Jobs_Calc_Anbunka2", conn);
-
-                cmd.CommandType = CommandType.StoredProcedure;
-                cmd.Parameters.Add(new("@Periode_ID", calc.Periode_ID));
-                cmd.Parameters.Add(new("@User_Login", calc.User_Login));
+                if (calc.Type == "1")
+                {
+                    cmd = new SqlCommand("sp_Jobs_Calc_Anbunka1", conn);
+                    cmd.CommandType = CommandType.StoredProcedure;
+                    cmd.Parameters.Add(new("@Periode_ID", calc.Periode_ID));
+                    cmd.Parameters.Add(new("@User_Login", calc.User_Login));
+                }
+                else
+                {
+                    cmd = new SqlCommand("sp_Jobs_Calc_Anbunka2", conn);
+                    cmd.CommandType = CommandType.StoredProcedure;
+                    cmd.Parameters.Add(new("@Periode_ID_Multi", calc.Periode_ID));
+                    cmd.Parameters.Add(new("@User_Login", calc.User_Login));
+                }
 
                 result = cmd.ExecuteScalar();
                 conn.Close();
@@ -95,6 +103,60 @@ namespace RFIDP2P3_API.Controllers
             remarks = result.ToString();
             if (remarks != "success") return BadRequest(remarks);
             else return Ok("success");
+        }
+
+        [HttpPost]
+        public ActionResult<IEnumerable<Calculate>> CalcCheck(Calculate calc)
+        {
+            object result;
+            using (SqlConnection conn = new SqlConnection(_configuration))
+            {
+                conn.Open();
+
+                SqlCommand cmd = new SqlCommand("sp_Calc_Check", conn);
+                cmd.CommandType = CommandType.StoredProcedure;
+                cmd.Parameters.Add(new("@Type", calc.Type));
+                cmd.Parameters.Add(new("@Periode", calc.Periode_ID));
+
+                result = cmd.ExecuteScalar();
+                conn.Close();
+            }
+            remarks = result.ToString();
+            return Ok(remarks);
+        }
+
+        [HttpPost]
+        public ActionResult<IEnumerable<Dictionary<string, object>>> INQPeriode()
+        {
+            var dt = new DataTable();
+
+            using (SqlConnection conn = new SqlConnection(_configuration))
+            {
+                conn.Open();
+                SqlCommand cmd = new SqlCommand("sp_Calc_Periode", conn);
+                cmd.CommandType = CommandType.StoredProcedure;
+
+                using (var da = new SqlDataAdapter(cmd))
+                {
+                    da.Fill(dt);
+                }
+
+                conn.Close();
+            }
+
+            var result = new List<Dictionary<string, object>>();
+
+            foreach (DataRow row in dt.Rows)
+            {
+                var dict = new Dictionary<string, object>();
+                foreach (DataColumn col in dt.Columns)
+                {
+                    dict[col.ColumnName] = row[col];
+                }
+                result.Add(dict);
+            }
+
+            return result;
         }
     }
 }

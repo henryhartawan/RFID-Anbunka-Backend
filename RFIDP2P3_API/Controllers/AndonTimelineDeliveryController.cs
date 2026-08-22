@@ -27,7 +27,6 @@ namespace RFIDP2P3_API.Controllers
             using (SqlCommand cmd = new SqlCommand("sp_Andon_Timeline_Delivery", conn))
             {
                 cmd.CommandType = CommandType.StoredProcedure;
-                cmd.CommandTimeout = 300;
                 conn.Open();
 
                 using (var da = new SqlDataAdapter(cmd))
