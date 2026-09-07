@@ -171,7 +171,12 @@ namespace RFIDP2P3_API.Controllers
                     //    }
                     //    conn.Close();
                     //}
-                    
+
+                    string userAgent = HttpContext.Request.Headers["User-Agent"].ToString();
+
+                    if (userAgent.Contains("Android") || userAgent.Contains("Dalvik"))
+                        return Ok(userLogin);
+
                     var loggedUser = userLogin.FirstOrDefault();
                     bool requireMfa = loggedUser.MFAStatus?.ToLower() == "true" || loggedUser.MFAStatus == "1";
 
@@ -182,8 +187,6 @@ namespace RFIDP2P3_API.Controllers
                         string tokenString = JwtHelper.GenerateToken(loggedUser, _config);
                         return Ok(new { requireMfa = false, token = tokenString, user = loggedUser });
                     }
-
-                    return Ok(userLogin);
                 }
             }
         }
