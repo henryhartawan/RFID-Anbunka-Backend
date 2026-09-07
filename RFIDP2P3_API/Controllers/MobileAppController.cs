@@ -3,11 +3,13 @@ using RFIDP2P3_API.Models;
 using System.Data.SqlClient;
 using System.Data;
 using System;
+using Microsoft.AspNetCore.Authorization;
 
 namespace RFIDP2P3_API.Controllers
 {
     [Route("api/[controller]/[action]")]
     [ApiController]
+    [AllowAnonymous]
     public class MobileAppController : Controller
 	{
         private readonly string _configuration;
