@@ -58,7 +58,7 @@ namespace RFIDP2P3_API.Controllers
                 if (entry.Attempts >= 2 && (now - entry.LastAttempt).TotalSeconds < 120)
                 {
                     var wait = 120 - (int)(now - entry.LastAttempt).TotalSeconds;
-                    return StatusCode(429, new { message = $"Terlalu banyak percobaan login gagal. Coba lagi dalam {wait} detik." });
+                    return StatusCode(429, new { message = $"Too many failed login attempts. Please try again in {wait} seconds." });
                 }
             }
             using (SqlConnection conn = new SqlConnection(_configuration))

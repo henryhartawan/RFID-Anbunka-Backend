@@ -261,7 +261,7 @@ namespace RFIDP2P3_API.Controllers
                     if (!string.IsNullOrEmpty(spRemarks))
                         return Ok(new[] { new
                         {
-                            Remarks = "Database Error: " + spRemarks, 
+                            Remarks = "System error occurred",
                             IsPastPeriod = false
                         } });
                 }
@@ -276,7 +276,7 @@ namespace RFIDP2P3_API.Controllers
             {
                 return Ok(new[] { new
                 {
-                    Remarks = "System Error: " + ex.Message, 
+                    Remarks = "System error occurred",
                     IsPastPeriod = false
                 } });
             }
@@ -315,7 +315,7 @@ namespace RFIDP2P3_API.Controllers
             }
             catch (Exception ex)
             {
-                return BadRequest("System Error: " + ex.Message);
+                return BadRequest("System error occurred");
             }
         }
     }

@@ -154,7 +154,7 @@ namespace RFIDP2P3_API.Controllers
             }
             catch (Exception e)
             {
-                return BadRequest($"System error occurred: {e.Message}");
+                return BadRequest($"System error occurred");
                 // return BadRequest("<div style='text-align: left; padding: 10px; background: #fdf2f2; border: 1px solid #f2dede; border-radius: 5px; color: #a94442; z-index: 9999;'>" +
                 //                   "Terjadi kesalahan pada sistem saat memproses file. Silakan coba beberapa saat lagi atau hubungi administrator." +
                 //                   "</div>");

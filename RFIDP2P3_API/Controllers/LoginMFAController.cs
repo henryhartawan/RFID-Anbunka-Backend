@@ -69,7 +69,7 @@ namespace RFIDP2P3_API.Controllers
                 MfaLogHelper.Info("SendEmail throttled", new { login.UserId, retryAfter });
                 Response.Headers["Retry-After"] = retryAfter.ToString();
                 return StatusCode(429, new {
-                    error = $"Terlalu sering meminta OTP. Coba lagi dalam {retryAfter} detik.",
+                    error = $"Too many OTP requests. Please try again in {retryAfter} seconds.",
                     countInWindow = current, limit = MAX_SENDS, windowSecondsLeft = left, retryAfter
                 });
             }
@@ -102,7 +102,7 @@ namespace RFIDP2P3_API.Controllers
                 MfaLogHelper.Info("CheckOTPEmail throttled", new { login.UserId, retryAfter });
                 Response.Headers["Retry-After"] = retryAfter.ToString();
                 return StatusCode(429, new {
-                    error = $"Terlalu banyak OTP salah. Coba lagi dalam {retryAfter} detik.",
+                    error = $"Too many incorrect OTP attempts. Please try again in {retryAfter} seconds.",
                     attemptsInWindow = current, limit = MAX_FAILS, windowSecondsLeft = left, retryAfter
                 });
             }
@@ -118,7 +118,7 @@ namespace RFIDP2P3_API.Controllers
                 {
                     Response.Headers["Retry-After"] = left2.ToString();
                     return StatusCode(429, new {
-                        error = $"Terlalu banyak OTP salah. Coba lagi dalam {left2} detik.",
+                        error = $"Too many incorrect OTP attempts. Please try again in {left2} seconds.",
                         attemptsInWindow = cnt, limit = MAX_FAILS, windowSecondsLeft = left2, retryAfter = left2
                     });
                 }
@@ -168,7 +168,7 @@ namespace RFIDP2P3_API.Controllers
                 Response.Headers["Retry-After"] = retryAfter.ToString();
                 MfaLogHelper.Info("MFA verify throttled", new { correlationId, login.UserId, current, limit = MAX_FAILS, left, retryAfter });
                 return StatusCode(429, new {
-                    error = $"Terlalu banyak kode TOTP salah. Coba lagi dalam {retryAfter} detik.",
+                    error = $"Too many incorrect authenticator codes. Please try again in {retryAfter} seconds.",
                     attemptsInWindow = current, limit = MAX_FAILS, windowSecondsLeft = left, retryAfter
                 });
             }
@@ -196,7 +196,7 @@ namespace RFIDP2P3_API.Controllers
                 {
                     Response.Headers["Retry-After"] = left2.ToString();
                     return StatusCode(429, new {
-                        error = $"Terlalu banyak kode TOTP salah. Coba lagi dalam {left2} detik.",
+                        error = $"Too many incorrect authenticator codes. Please try again in {left2} seconds.",
                         attemptsInWindow = cnt, limit = MAX_FAILS, windowSecondsLeft = left2, retryAfter = left2
                     });
                 }

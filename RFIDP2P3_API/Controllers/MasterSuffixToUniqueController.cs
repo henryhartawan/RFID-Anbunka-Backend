@@ -247,7 +247,7 @@ namespace RFIDP2P3_API.Controllers
 		    }
 		    catch (Exception ex)
 		    {
-		        return BadRequest($"Critical System Error: {ex.Message}");
+		        return BadRequest($"System Error.");
 		    }
 		}
 		
