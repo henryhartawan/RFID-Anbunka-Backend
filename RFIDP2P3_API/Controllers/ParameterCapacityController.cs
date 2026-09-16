@@ -82,9 +82,40 @@ namespace RFIDP2P3_API.Controllers
             if (!validation.IsValid)
                 return BadRequest(validation.ErrorMessage);
 
+            var validOptionsByShift = new Dictionary<string, HashSet<int>>(StringComparer.OrdinalIgnoreCase);
+            var validAssyOptions = new HashSet<int>();
+            var validMachiningOptions = new HashSet<int>();
+
+            using (SqlConnection conn = new SqlConnection(_configuration))
+            {
+                conn.Open();
+                string sqlAllowed = "SELECT LineType, Shift, MandatoryValue FROM M_Parameter_Mandatory_Option";
+                using (SqlCommand cmd = new SqlCommand(sqlAllowed, conn))
+                using (SqlDataReader reader = cmd.ExecuteReader())
+                {
+                    while (reader.Read())
+                    {
+                        string lType = reader["LineType"].ToString()?.Trim() ?? "";
+                        int sft = Convert.ToInt32(reader["Shift"]);
+                        int val = Convert.ToInt32(reader["MandatoryValue"]);
+
+                        string key = $"{lType}_{sft}";
+                        if (!validOptionsByShift.ContainsKey(key))
+                            validOptionsByShift[key] = new HashSet<int>();
+
+                        validOptionsByShift[key].Add(val);
+
+                        if (lType.Equals("Assy", StringComparison.OrdinalIgnoreCase))
+                            validAssyOptions.Add(val);
+                        else
+                            validMachiningOptions.Add(val);
+                    }
+                }
+            }
+
             List<UploadCapacity> uploadData = new List<UploadCapacity>();
             List<string> errorLogs = new List<string>();
-            string extractedPeriode = ""; 
+            string extractedPeriode = "";
             int rowCount = 2;
             
             try
@@ -102,10 +133,11 @@ namespace RFIDP2P3_API.Controllers
                         {
                             ConfigureDataTable = (_) => new ExcelDataReader.ExcelDataTableConfiguration() { UseHeaderRow = true }
                         });
-                        
+
                         var dataTable = dataSet.Tables[0];
-                        string[] expectedHeaders = { "Periode", "Line Code", "Month", "Advance", "Mandatory", "Overtime HOT" };
-                
+
+                        string[] expectedHeaders = { "Periode", "Line Code", "Month", "Shift", "Advance", "Mandatory", "Overtime HOT" };
+
                         foreach (string header in expectedHeaders)
                         {
                             if (!dataTable.Columns.Contains(header))
@@ -117,11 +149,12 @@ namespace RFIDP2P3_API.Controllers
                             string periodeStr = row[0]?.ToString()?.Trim();
                             string lineCode = row[1]?.ToString()?.Trim();
                             string bulanProduksi = row[2]?.ToString()?.Trim();
-                            string advanceStr = row[3]?.ToString()?.Trim();
-                            string mandatoryStr = row[4]?.ToString()?.Trim();
-                            string overtimeStr = row[5]?.ToString()?.Trim();
+                            string shiftStr = row[3]?.ToString()?.Trim();
+                            string advanceStr = row[4]?.ToString()?.Trim();
+                            string mandatoryStr = row[5]?.ToString()?.Trim();
+                            string overtimeStr = row[6]?.ToString()?.Trim();
 
-                            if (string.IsNullOrEmpty(periodeStr) && string.IsNullOrEmpty(lineCode)) 
+                            if (string.IsNullOrEmpty(periodeStr) && string.IsNullOrEmpty(lineCode))
                                 continue;
 
                             if (string.IsNullOrEmpty(extractedPeriode))
@@ -142,6 +175,13 @@ namespace RFIDP2P3_API.Controllers
                                 }
                             }
 
+                            bool isAssy = !string.IsNullOrEmpty(lineCode) &&
+                                          lineCode.StartsWith("K", StringComparison.OrdinalIgnoreCase);
+                            string lineTypeKey = isAssy ? "Assy" : "Machining";
+
+                            int shiftVal = 0;
+                            int.TryParse(shiftStr, out shiftVal);
+
                             int mandatoryVal = 0;
                             if (string.IsNullOrEmpty(mandatoryStr))
                                 errorLogs.Add($"Row {rowCount}: Mandatory is missing for Line {lineCode}.");
@@ -149,14 +189,21 @@ namespace RFIDP2P3_API.Controllers
                                 errorLogs.Add($"Row {rowCount}: Mandatory must be a number.");
                             else
                             {
-                                bool isKLine = lineCode != null && lineCode.StartsWith("K", StringComparison.OrdinalIgnoreCase);
-                        
-                                if (isKLine && mandatoryVal != 34 && mandatoryVal != 82)
-                                    errorLogs.Add($"Row {rowCount}: Mandatory value for {lineCode} (K-Line) must be 34 or 82.");
-                                else if (!isKLine && mandatoryVal != 100 && mandatoryVal != 52)
-                                    errorLogs.Add($"Row {rowCount}: Mandatory value for {lineCode} (Machining) must be 100 or 52.");
+                                string shiftOptionKey = $"{lineTypeKey}_{shiftVal}";
+
+                                if (validOptionsByShift.TryGetValue(shiftOptionKey, out var allowedValues))
+                                {
+                                    if (!allowedValues.Contains(mandatoryVal))
+                                        errorLogs.Add($"Row {rowCount}: Mandatory value {mandatoryVal} is invalid for {lineCode} ({lineTypeKey} Shift {shiftVal}).");
+                                }
+                                else
+                                {
+                                    var fallbackAllowed = isAssy ? validAssyOptions : validMachiningOptions;
+                                    if (!fallbackAllowed.Contains(mandatoryVal))
+                                        errorLogs.Add($"Row {rowCount}: Mandatory value {mandatoryVal} is invalid for {lineCode} ({lineTypeKey}).");
+                                }
                             }
-                            
+
                             int advanceVal = 0;
                             if (!string.IsNullOrEmpty(advanceStr) && !int.TryParse(advanceStr, out advanceVal))
                                 errorLogs.Add($"Row {rowCount}: Advance must be a number.");
@@ -173,7 +220,7 @@ namespace RFIDP2P3_API.Controllers
                                 if (startIdx >= 0 && endIdx > startIdx)
                                 {
                                     string nVal = bulanProduksi.Substring(startIdx + 1, endIdx - startIdx - 1).ToUpper();
-                                    
+
                                     if (nVal == "N") offsetN = 0;
                                     else if (nVal.StartsWith("N+"))
                                     {
@@ -182,7 +229,7 @@ namespace RFIDP2P3_API.Controllers
                                 }
                             }
 
-                            if (errorLogs.Count == 0) 
+                            if (errorLogs.Count == 0)
                             {
                                 uploadData.Add(new UploadCapacity
                                 {
@@ -202,11 +249,11 @@ namespace RFIDP2P3_API.Controllers
                 if (errorLogs.Count > 0)
                 {
                     var topErrors = errorLogs.Take(10).Select(e => $"<li style='margin-bottom: 5px;'>{e}</li>");
-                    string combinedErrors = "<div style='text-align: left; max-height: 200px; overflow-y: auto; padding: 10px; background: #fdf2f2; border: 1px solid #f2dede; border-radius: 5px;'>" + 
-                                            "<ul style='padding-left: 20px; color: #a94442; font-size: 13px; margin: 0;'>" + 
-                                            string.Join("", topErrors) + 
+                    string combinedErrors = "<div style='text-align: left; max-height: 200px; overflow-y: auto; padding: 10px; background: #fdf2f2; border: 1px solid #f2dede; border-radius: 5px;'>" +
+                                            "<ul style='padding-left: 20px; color: #a94442; font-size: 13px; margin: 0;'>" +
+                                            string.Join("", topErrors) +
                                             "</ul>";
-            
+
                     if (errorLogs.Count > 10)
                         combinedErrors += $"<p style='margin-top: 10px; font-size: 12px; color: #777;'><i>...and {errorLogs.Count - 10} other error(s).</i></p>";
                     combinedErrors += "</div>";
@@ -237,7 +284,7 @@ namespace RFIDP2P3_API.Controllers
 
                 if (spRemarks.ToLower() != "success")
                     return BadRequest($"<div style='text-align: left; padding: 10px; background: #fdf2f2; border: 1px solid #f2dede; border-radius: 5px; color: #a94442;'>Upload Rejected by System: {spRemarks}</div>");
-                
+
                 return Ok("success");
             }
             catch (Exception e)
@@ -248,8 +295,8 @@ namespace RFIDP2P3_API.Controllers
                 //                   "</div>");
             }
         }
-        
-        [HttpGet] 
+
+        [HttpGet]
         public IActionResult DownloadTemplate(string periode)
         {
             try
@@ -257,24 +304,56 @@ namespace RFIDP2P3_API.Controllers
                 if (string.IsNullOrEmpty(periode))
                     return BadRequest("Invalid Period.");
 
+                string cleanPeriode = periode.Replace("-", "");
+                if (!DateTime.TryParseExact(cleanPeriode, "yyyyMM", System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.None, out DateTime baseDate))
+                    return BadRequest("Invalid period format. Expected YYYY-MM or YYYYMM.");
+
                 var dt = new DataTable();
 
                 using (SqlConnection conn = new SqlConnection(_configuration))
                 {
                     conn.Open();
                     string sql = @"
+                        WITH FirmLines AS (
+                            SELECT 
+                                M.LineOrderCode,
+                                F.MonthOffsetLabel,
+                                CASE 
+                                    WHEN F.MonthOffsetLabel = 'N' THEN 0 
+                                    ELSE CAST(REPLACE(F.MonthOffsetLabel, 'N+', '') AS INT) 
+                                END AS OffsetUrutan
+                            FROM T_Calc_Order_Firm F
+                            JOIN M_Suffix_to_Unique M ON F.Suffix = M.SuffixCode
+                            WHERE REPLACE(F.Periode, '-', '') = REPLACE(@Periode, '-', '') 
+                            GROUP BY M.LineOrderCode, F.MonthOffsetLabel
+                        )
                         SELECT 
-                            M.LineOrderCode,
-                            F.MonthOffsetLabel,
-                            CASE 
-                                WHEN F.MonthOffsetLabel = 'N' THEN 0 
-                                ELSE CAST(REPLACE(F.MonthOffsetLabel, 'N+', '') AS INT) 
-                            END AS OffsetUrutan
-                        FROM T_Calc_Order_Firm F
-                        JOIN M_Suffix_to_Unique M ON F.Suffix = M.SuffixCode
-                        WHERE REPLACE(F.Periode, '-', '') = REPLACE(@Periode, '-', '') 
-                        GROUP BY M.LineOrderCode, F.MonthOffsetLabel
-                        ORDER BY M.LineOrderCode, OffsetUrutan";
+                            FL.LineOrderCode,
+                            FL.MonthOffsetLabel,
+                            FL.OffsetUrutan,
+                            DATEADD(MONTH, FL.OffsetUrutan + 1, CAST(REPLACE(@Periode, '-', '') + '01' AS DATE)) AS TargetDate,
+                            Cal.DominantShift,
+                            ISNULL(Cal.TotalDays, 0) AS TotalCalendarDays
+                        FROM FirmLines FL
+                        OUTER APPLY (
+                            SELECT 
+                                CASE 
+                                    WHEN SUM(CASE WHEN S.ShiftCount >= 2 THEN 1 ELSE 0 END) >= 
+                                         SUM(CASE WHEN S.ShiftCount = 1 THEN 1 ELSE 0 END) 
+                                    THEN 2 
+                                    ELSE 1 
+                                END AS DominantShift,
+                                COUNT(*) AS TotalDays
+                            FROM (
+                                SELECT CalendarDate, COUNT(DISTINCT Shift) AS ShiftCount
+                                FROM M_Add_Calendar
+                                WHERE LineOrderCode = FL.LineOrderCode
+                                  AND CalendarDate >= DATEADD(MONTH, FL.OffsetUrutan + 1, CAST(REPLACE(@Periode, '-', '') + '01' AS DATE))
+                                  AND CalendarDate <  DATEADD(MONTH, FL.OffsetUrutan + 2, CAST(REPLACE(@Periode, '-', '') + '01' AS DATE))
+                                GROUP BY CalendarDate
+                            ) S
+                        ) Cal
+                        ORDER BY FL.LineOrderCode, FL.OffsetUrutan";
 
                     using (SqlCommand cmd = new SqlCommand(sql, conn))
                     {
@@ -287,70 +366,163 @@ namespace RFIDP2P3_API.Controllers
                 }
 
                 if (dt.Rows.Count == 0)
-                    return BadRequest("No data found for this period. Cannot generate template.");
-                
-                string cleanPeriode = periode.Replace("-", "");
-                if (!DateTime.TryParseExact(cleanPeriode, "yyyyMM", System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.None, out DateTime baseDate))
-                    return BadRequest("Invalid period format.");
+                    return BadRequest("No firm order data found for this period. Cannot generate template.");
+
+                var cultureId = new System.Globalization.CultureInfo("id-ID");
+
+                var missingCalendars = new List<string>();
+                foreach (DataRow dr in dt.Rows)
+                {
+                    int totalDays = Convert.ToInt32(dr["TotalCalendarDays"]);
+                    if (totalDays == 0)
+                    {
+                        string line = dr["LineOrderCode"].ToString();
+                        string mLabel = dr["MonthOffsetLabel"].ToString();
+                        DateTime tDate = Convert.ToDateTime(dr["TargetDate"]);
+                        string monthName = tDate.ToString("MMMM yyyy", cultureId);
+
+                        missingCalendars.Add($"Line <b>{line}</b> for period <b>{monthName} ({mLabel})</b>");
+                    }
+                }
+
+                if (missingCalendars.Count > 0)
+                {
+                    var distinctErrors = missingCalendars.Distinct().ToList();
+                    string errorList = string.Join("", distinctErrors.Select(err => $"<li style='margin-bottom: 4px;'>{err}</li>"));
+
+                    return BadRequest(
+                        $"<div style='text-align: left; padding: 10px; background: #fdf2f2; border: 1px solid #f2dede; border-radius: 5px; color: #a94442;'>" +
+                        $"<b>Missing Calendar Data:</b> Calendar data is missing for the following line(s) and period(s):" +
+                        $"<ul style='padding-left: 20px; margin-top: 8px; margin-bottom: 8px; font-size: 13px;'>" +
+                        $"{errorList}" +
+                        $"</ul>" +
+                        $"Please generate or upload the calendar in the <b>Additional Master Calendar</b> menu first before downloading this template.</div>"
+                    );
+                }
+
+                var mandatoryOptionsMap = new Dictionary<string, MandatoryOptionConfig>(StringComparer.OrdinalIgnoreCase);
+                using (SqlConnection conn = new SqlConnection(_configuration))
+                {
+                    conn.Open();
+                    string sqlOptions = @"
+                        SELECT LineType, Shift, MandatoryValue, Description, IsDefault 
+                        FROM M_Parameter_Mandatory_Option
+                        ORDER BY LineType, Shift, SortOrder";
+
+                    using (SqlCommand cmd = new SqlCommand(sqlOptions, conn))
+                    using (SqlDataReader reader = cmd.ExecuteReader())
+                    {
+                        while (reader.Read())
+                        {
+                            string lType = reader["LineType"].ToString()?.Trim() ?? "";
+                            int sft = Convert.ToInt32(reader["Shift"]);
+                            int val = Convert.ToInt32(reader["MandatoryValue"]);
+                            string desc = reader["Description"]?.ToString()?.Trim() ?? "";
+                            bool isDef = Convert.ToBoolean(reader["IsDefault"]);
+
+                            string key = $"{lType}_{sft}";
+                            if (!mandatoryOptionsMap.ContainsKey(key))
+                            {
+                                mandatoryOptionsMap[key] = new MandatoryOptionConfig
+                                {
+                                    LineType = lType,
+                                    Shift = sft
+                                };
+                            }
+
+                            mandatoryOptionsMap[key].Items.Add(new MandatoryOptionItem
+                            {
+                                Value = val,
+                                Description = desc,
+                                IsDefault = isDef
+                            });
+                        }
+                    }
+                }
 
                 using (var workbook = new XLWorkbook())
                 {
                     var worksheet = workbook.Worksheets.Add("Template_Parameter");
-                    
-                    string[] headers = { 
-                        "Periode", "Line Code", "Month", "Advance", "Mandatory", "Overtime HOT" 
+
+                    string[] headers = {
+                        "Periode", "Line Code", "Month", "Shift", "Advance", "Mandatory", "Overtime HOT"
                     };
-                    
+
                     for (int i = 0; i < headers.Length; i++)
                     {
                         worksheet.Cell(1, i + 1).Value = headers[i];
                     }
-                    
+
                     var headerRow = worksheet.Range(1, 1, 1, headers.Length);
                     headerRow.Style.Font.Bold = true;
                     headerRow.Style.Fill.BackgroundColor = XLColor.LightGray;
                     headerRow.Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
 
                     int currentRow = 2;
-                    
                     string formattedPeriode = periode.Contains("-") ? periode : periode.Insert(4, "-");
-
-                    var cultureId = new System.Globalization.CultureInfo("id-ID");
 
                     foreach (DataRow dr in dt.Rows)
                     {
-                        string lineCode = dr["LineOrderCode"].ToString();
+                        string lineCode = dr["LineOrderCode"].ToString()?.Trim() ?? "";
                         string bulanKeLabel = dr["MonthOffsetLabel"].ToString();
                         int offsetUrutan = Convert.ToInt32(dr["OffsetUrutan"]);
 
                         DateTime targetMonth = baseDate.AddMonths(offsetUrutan + 1);
-                        
+                        int shift = Convert.ToInt32(dr["DominantShift"]);
+
                         string displayBulan = $"{targetMonth.ToString("MMMM yyyy", cultureId)} ({bulanKeLabel})";
 
                         worksheet.Cell(currentRow, 1).Value = formattedPeriode;
                         worksheet.Cell(currentRow, 2).Value = lineCode;
-                        worksheet.Cell(currentRow, 3).Value = displayBulan; 
-                        
-                        worksheet.Cell(currentRow, 4).Value = 0;
+                        worksheet.Cell(currentRow, 3).Value = displayBulan;
+                        worksheet.Cell(currentRow, 4).Value = $"{shift}";
+
                         worksheet.Cell(currentRow, 5).Value = 0;
-                        worksheet.Cell(currentRow, 6).Value = 0;
-                        
-                        worksheet.Range(currentRow, 4, currentRow, 6).Style.Fill.BackgroundColor = XLColor.LightYellow;
-                        
+                        worksheet.Cell(currentRow, 7).Value = 0;
+
+                        bool isAssy = lineCode.StartsWith("K", StringComparison.OrdinalIgnoreCase);
+
+                        string lineTypeKey = isAssy ? "Assy" : "Machining";
+                        string optionKey = $"{lineTypeKey}_{shift}";
+
+                        var mandatoryCell = worksheet.Cell(currentRow, 6);
+
+                        if (mandatoryOptionsMap.TryGetValue(optionKey, out var config) && config.Items.Count > 0)
+                        {
+                            int defaultValue = config.Items.FirstOrDefault(x => x.IsDefault)?.Value ?? config.Items.First().Value;
+                            mandatoryCell.Value = defaultValue;
+
+                            string allowedValues = string.Join(",", config.Items.Select(x => x.Value));
+                            string validationList = $"\"{allowedValues}\"";
+
+                            string inputTooltip = string.Join("\n", config.Items.Select(x => $"{x.Value} : {x.Description}"));
+
+                            var validation = mandatoryCell.GetDataValidation();
+                            validation.List(validationList, false);
+
+                            validation.ShowInputMessage = true;
+                            validation.InputTitle = "Mandatory Option Guide";
+                            validation.InputMessage = inputTooltip;
+
+                            validation.ShowErrorMessage = true;
+                            validation.ErrorStyle = XLErrorStyle.Stop;
+                            validation.ErrorTitle = "Invalid Value";
+                            validation.ErrorMessage = $"Mandatory value for {lineTypeKey} ({shift} Shift) must be one of: {allowedValues}.";
+                        }
+                        else
+                        {
+                            mandatoryCell.Value = 0;
+                        }
+
+                        var inputCells = worksheet.Range(currentRow, 5, currentRow, 7);
+                        inputCells.Style.Fill.BackgroundColor = XLColor.LightYellow;
+                        inputCells.Style.Protection.SetLocked(false);
+
                         currentRow++;
                     }
 
-                    worksheet.Protect("Admin-ICS"); 
-                    worksheet.Column(1).Style.Protection.SetLocked(true);
-                    worksheet.Column(2).Style.Protection.SetLocked(true);
-                    worksheet.Column(3).Style.Protection.SetLocked(true);
-                    
-                    worksheet.Column(4).Style.Protection.SetLocked(false);
-                    worksheet.Column(5).Style.Protection.SetLocked(false);
-                    worksheet.Column(6).Style.Protection.SetLocked(false);
-                    
+                    worksheet.Protect("Admin-ICS");
                     worksheet.Columns().AdjustToContents();
-
                     using (var stream = new MemoryStream())
                     {
                         workbook.SaveAs(stream);
@@ -361,7 +533,7 @@ namespace RFIDP2P3_API.Controllers
             }
             catch (Exception ex)
             {
-                return BadRequest("Error generating template");
+                return BadRequest($"Error generating template: {ex.Message}");
             }
         }
     }
