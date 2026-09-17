@@ -52,7 +52,7 @@ namespace RFIDP2P3_API.Helpers
             return false;
         }
 
-        // Hit setiap request (contoh: anti-spam kirim OTP)
+        // Hit setiap request
         public static void RegisterHit(
             AttemptMap dict,
             string key,

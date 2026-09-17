@@ -216,18 +216,48 @@ namespace RFIDP2P3_API.Controllers
 
             EndpointThrottle.Reset(checkAuthTracker, key);
 
-            string token = Convert.ToHexString(RandomNumberGenerator.GetBytes(32));
-            await _mfaService.UpdateTokenAndLoginStatusAsync(login.UserId, token);
+            string mfaToken = Convert.ToHexString(RandomNumberGenerator.GetBytes(32));
+            await _mfaService.UpdateTokenAndLoginStatusAsync(login.UserId, mfaToken);
             
-            var userForJwt = new User { PIC_ID = login.UserId, PIC_Name = login.UserName }; 
+            var userForJwt = new User { PIC_ID = login.UserId, PIC_Name = login.UserName };
             string jwtString = JwtHelper.GenerateToken(userForJwt, _config);
 
-            MfaLogHelper.Info("MFA success, token issued", new { correlationId, login.UserId });
+            string refreshTokenString = JwtHelper.GenerateRefreshToken();
+            DateTime refreshTokenExpiry = DateTime.UtcNow.AddDays(_config.GetValue<int>("JWT:RefreshTokenExpireDays", 7));
+            string connectionString = _config.GetConnectionString("DefaultConnection")!;
+
+            using (var conn2 = new System.Data.SqlClient.SqlConnection(connectionString))
+            {
+                conn2.Open();
+
+                using (var cmdRevoke = new System.Data.SqlClient.SqlCommand(
+                           "UPDATE UserRefreshTokens " +
+                                    "SET RevokedUtc = GETUTCDATE() " +
+                                    "WHERE UserId = @UserId " +
+                                        "AND RevokedUtc IS NULL", conn2))
+                {
+                    cmdRevoke.Parameters.AddWithValue("@UserId", login.UserId);
+                    cmdRevoke.ExecuteNonQuery();
+                }
+
+                using (var cmdInsert = new System.Data.SqlClient.SqlCommand(
+                           @"INSERT INTO UserRefreshTokens (UserId, Token, ExpiresUtc, CreatedUtc) 
+                        VALUES (@UserId, @Token, @ExpiresUtc, GETUTCDATE())", conn2))
+                {
+                    cmdInsert.Parameters.AddWithValue("@UserId", login.UserId);
+                    cmdInsert.Parameters.AddWithValue("@Token", refreshTokenString);
+                    cmdInsert.Parameters.AddWithValue("@ExpiresUtc", refreshTokenExpiry);
+                    cmdInsert.ExecuteNonQuery();
+                }
+            }
+
+            MfaLogHelper.Info("MFA success, tokens issued", new { correlationId, login.UserId });
 
             return Ok(new
             {
                 status = 1,
                 token = jwtString,
+                refreshToken = refreshTokenString,
                 data = new { url = "/Home/Index" }
             });
         }

@@ -52,6 +52,7 @@ builder.Services.AddSingleton<IAuditQueue, AuditQueue>();
 
 builder.Services.AddHostedService<AuditLogWorker>();
 builder.Services.AddHostedService<AuditCleanupWorker>();
+builder.Services.AddHostedService<TokenCleanupWorker>();
 
 builder.Services.AddScoped<IAuditService, AuditService>();
 
@@ -130,7 +131,8 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             ValidAudience = jwtConfig["Audience"],
             ValidateLifetime = true,
             ValidateIssuerSigningKey = true,
-            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtConfig["Key"]!))
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtConfig["Key"]!)),
+            ClockSkew = TimeSpan.Zero
         };
     });
 

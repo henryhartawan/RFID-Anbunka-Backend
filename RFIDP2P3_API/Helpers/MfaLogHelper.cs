@@ -22,7 +22,6 @@ public class MfaLogHelper
         @"(?i)(""?Secret""?\s*[:=]\s*""?)([0-9A-Za-z]+)(""?)",
         RegexOptions.Compiled | RegexOptions.CultureInvariant);
 
-    // Opsional tambahan (aktifkan kalau perlu)
     private static readonly Regex RxToken = new(
         @"(?i)(""?(Token|Authorization)""?\s*[:=]\s*""?)([A-Za-z0-9\-\._~\+\/=]+)(""?)",
         RegexOptions.Compiled | RegexOptions.CultureInvariant);
@@ -45,7 +44,6 @@ public class MfaLogHelper
             var fileDate = nowLocal.ToString("yyyy-MM-dd");
             var file = Path.Combine(DefaultDir, $"mfa-{fileDate}.log");
 
-            // Jaga supaya log tetap single-line (hindari injeksi newline)
             context = OneLine(context);
 
             string payload = data == null ? "" :
@@ -64,7 +62,7 @@ public class MfaLogHelper
             {
                 Console.Error.WriteLine($"[LogWriteError] {DateTime.UtcNow:o} {ex.Message}");
             }
-            catch { /* swallow */ }
+            catch { }
         }
     }
     
@@ -79,7 +77,6 @@ public class MfaLogHelper
         // Secret → mask head (sisa 3)
         text = RxSecret.Replace(text, m => $"{m.Groups[1].Value}{MaskHead(m.Groups[2].Value, 3)}{m.Groups[3].Value}");
 
-        // Tambahan opsional
         text = RxToken.Replace(text, m => $"{m.Groups[1].Value}{MaskHead(m.Groups[3].Value, 3)}{m.Groups[4].Value}");
         text = RxEmail.Replace(text, m => $"{m.Groups[1].Value}{MaskEmail(m.Groups[3].Value)}{m.Groups[4].Value}");
 

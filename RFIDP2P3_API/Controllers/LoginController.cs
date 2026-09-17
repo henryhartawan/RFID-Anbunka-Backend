@@ -185,7 +185,38 @@ namespace RFIDP2P3_API.Controllers
                     else
                     {
                         string tokenString = JwtHelper.GenerateToken(loggedUser, _config);
-                        return Ok(new { requireMfa = false, token = tokenString, user = loggedUser });
+                        string refreshTokenString = JwtHelper.GenerateRefreshToken();
+                        DateTime refreshTokenExpiry =
+                            DateTime.UtcNow.AddDays(_config.GetValue<int>("JWT:RefreshTokenExpireDays", 7));
+
+                        using (SqlConnection conn2 = new SqlConnection(_configuration))
+                        {
+                            conn2.Open();
+
+                            using (SqlCommand cmdRevoke = new SqlCommand(
+                                       "UPDATE UserRefreshTokens SET RevokedUtc = GETUTCDATE() WHERE UserId = @UserId AND RevokedUtc IS NULL", conn2))
+                            {
+                                cmdRevoke.Parameters.AddWithValue("@UserId", loggedUser.PIC_ID);
+                                cmdRevoke.ExecuteNonQuery();
+                            }
+
+                            using (SqlCommand cmdInsert = new SqlCommand(
+                                       @"INSERT INTO UserRefreshTokens (UserId, Token, ExpiresUtc, CreatedUtc) 
+                                            VALUES (@UserId, @Token, @ExpiresUtc, GETUTCDATE())", conn2))
+                            {
+                                cmdInsert.Parameters.AddWithValue("@UserId", loggedUser.PIC_ID);
+                                cmdInsert.Parameters.AddWithValue("@Token", refreshTokenString);
+                                cmdInsert.Parameters.AddWithValue("@ExpiresUtc", refreshTokenExpiry);
+                                cmdInsert.ExecuteNonQuery();
+                            }
+                        }
+                        return Ok(new
+                        {
+                            requireMfa = false,
+                            token = tokenString,
+                            refreshToken = refreshTokenString,
+                            user = loggedUser
+                        });
                     }
                 }
             }
