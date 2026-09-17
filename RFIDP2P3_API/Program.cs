@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc.Authorization;
 using Microsoft.OpenApi.Models;
 using RFIDP2P3_API.Models;
+using RFIDP2P3_API.Filters;
 using RFIDP2P3_API.Services.Implementations;
 using RFIDP2P3_API.Services.Interfaces;
 using Microsoft.AspNetCore.HttpOverrides;
@@ -31,13 +32,22 @@ builder.Services.AddCors(options =>
 });
 // Add services to the container.
 
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddSingleton<IAuditQueue, AuditQueue>();
+
+builder.Services.AddHostedService<AuditLogWorker>();
+builder.Services.AddHostedService<AuditCleanupWorker>();
+
+builder.Services.AddScoped<IAuditService, AuditService>();
+
 var requireAuthPolicy = new AuthorizationPolicyBuilder()
     .RequireAuthenticatedUser()
     .Build();
 
 builder.Services.AddControllers(options =>
 {
-    options.Filters.Add(new AuthorizeFilter(requireAuthPolicy)); 
+    options.Filters.Add(new AuthorizeFilter(requireAuthPolicy));
+    options.Filters.Add<GlobalAuditActionFilter>();
 }).AddJsonOptions(options => 
 { 
     options.JsonSerializerOptions.PropertyNamingPolicy = null; 

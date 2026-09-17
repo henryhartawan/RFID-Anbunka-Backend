@@ -4,6 +4,7 @@ using System.Data.SqlClient;
 using System.Data;
 using System.Net.NetworkInformation;
 using OfficeOpenXml;
+using RFIDP2P3_API.Attributes;
 
 namespace RFIDP2P3_API.Controllers
 {
@@ -232,6 +233,7 @@ namespace RFIDP2P3_API.Controllers
             else return Ok("success");
 		}
 		[HttpPost]
+        [IgnoreAudit]
 		public ActionResult<IEnumerable<LDK>> INQn(LDK paramObj)
 		{
 			List<LDK> ContainerObj = new();
