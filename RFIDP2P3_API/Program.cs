@@ -11,10 +11,25 @@ using RFIDP2P3_API.Services.Interfaces;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.IdentityModel.Tokens;
 using RFIDP2P3_API.Middlewares;
+using Serilog;
+using Serilog.Events;
 
 JwtSecurityTokenHandler.DefaultInboundClaimTypeMap.Clear();
 
 var builder = WebApplication.CreateBuilder(args);
+
+builder.Host.UseSerilog((context, loggerConfiguration) =>
+{
+    loggerConfiguration
+        .MinimumLevel.Information()
+        .MinimumLevel.Override("Microsoft", Serilog.Events.LogEventLevel.Warning)
+        .Enrich.FromLogContext()
+        .WriteTo.Console()
+        .WriteTo.File("logs/system-log-.txt",
+            rollingInterval: RollingInterval.Day,
+            retainedFileCountLimit: 30,
+            outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] [User: {UserId}] {Message:lj}{NewLine}{Exception}");
+});
 
 var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>();
 
@@ -48,9 +63,9 @@ builder.Services.AddControllers(options =>
 {
     options.Filters.Add(new AuthorizeFilter(requireAuthPolicy));
     options.Filters.Add<GlobalAuditActionFilter>();
-}).AddJsonOptions(options => 
-{ 
-    options.JsonSerializerOptions.PropertyNamingPolicy = null; 
+}).AddJsonOptions(options =>
+{
+    options.JsonSerializerOptions.PropertyNamingPolicy = null;
 });
 
 builder.Services.Configure<EmailSettings>(builder.Configuration.GetSection("EmailSettings"));
@@ -67,7 +82,7 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(options =>
 {
     options.SwaggerDoc("v1", new OpenApiInfo { Title = "RFIDP2P3_API", Version = "v1" });
-    
+
     options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
     {
         Description = "Masukkan token JWT dengan format: Bearer {token}",
@@ -77,7 +92,7 @@ builder.Services.AddSwaggerGen(options =>
         Scheme = "Bearer"
     });
     
-    options.AddSecurityRequirement(new OpenApiSecurityRequirement 
+    options.AddSecurityRequirement(new OpenApiSecurityRequirement
     {
         {
             new OpenApiSecurityScheme
@@ -120,6 +135,33 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     });
 
 var app = builder.Build();
+
+app.UseSerilogRequestLogging(options =>
+{
+    options.GetLevel = (httpContext, elapsed, ex) =>
+    {
+        if (ex != null || httpContext.Response.StatusCode >= 500)
+            return LogEventLevel.Error;
+
+        if (httpContext.Response.StatusCode >= 400)
+            return LogEventLevel.Warning;
+
+        if (httpContext.Request.Path.StartsWithSegments("/api/LDK/INQn", StringComparison.OrdinalIgnoreCase))
+            return LogEventLevel.Verbose;
+
+        return LogEventLevel.Information;
+    };
+
+    options.EnrichDiagnosticContext = (diagnosticContext, httpContext) =>
+    {
+        var userId = httpContext.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
+                     ?? httpContext.User.FindFirst("sub")?.Value
+                     ?? httpContext.User.FindFirst("PIC_ID")?.Value
+                     ?? httpContext.User.FindFirst("UserId")?.Value;
+
+        diagnosticContext.Set("UserId", !string.IsNullOrEmpty(userId) ? userId : "Anonymous");
+    };
+});
 
 app.UseForwardedHeaders();
 
