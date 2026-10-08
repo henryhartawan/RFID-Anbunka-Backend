@@ -53,5 +53,53 @@ namespace RFIDP2P3_API.Controllers
 
             return Ok(result);
         }
+
+        [HttpPost]
+        public IActionResult UpdateCell([FromBody] UpdateCapacityCellRequest request)
+        {
+            if (string.IsNullOrEmpty(request.Periode) || string.IsNullOrEmpty(request.LineOrderCode))
+                return BadRequest(new { success = false, message = "Invalid data payload." });
+
+            using (SqlConnection conn = new SqlConnection(_configuration))
+            {
+                conn.Open();
+                using (SqlCommand cmd = new SqlCommand("sp_Update_Calc_Capacity_Cell", conn))
+                {
+                    cmd.CommandType = CommandType.StoredProcedure;
+                    cmd.Parameters.AddWithValue("@BasePeriode", request.Periode);
+                    cmd.Parameters.AddWithValue("@LineOrderCode", request.LineOrderCode);
+                    cmd.Parameters.AddWithValue("@MonthOffsetLabel", request.BulanKe ?? "");
+                    cmd.Parameters.AddWithValue("@FieldName", request.FieldName ?? "");
+                    cmd.Parameters.AddWithValue("@NewValue", request.NewValue);
+
+                    cmd.Parameters.AddWithValue("@User_Login", "WebUser");
+
+                    try
+                    {
+                        var result = cmd.ExecuteScalar()?.ToString();
+                        if (result == "Success")
+                            return Ok(new
+                            {
+                                success = true,
+                                message = "Update & Recalculate success"
+                            });
+                        else
+                            return BadRequest(new
+                            {
+                                success = false,
+                                message = result
+                            });
+                    }
+                    catch (Exception ex)
+                    {
+                        return StatusCode(500, new
+                        {
+                            success = false,
+                            message = ex.Message
+                        });
+                    }
+                }
+            }
+        }
     }
 }

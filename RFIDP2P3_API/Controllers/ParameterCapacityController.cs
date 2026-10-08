@@ -36,9 +36,7 @@ namespace RFIDP2P3_API.Controllers
                         Periode,
                         LineCode,
                         MonthOffsetLabel AS Month,
-                        Advance,
                         Mandatory,
-                        OvertimeHOT,
                         CreatedUser AS [User],
                         CreatedAt AS UploadDate
                     FROM T_Parameter_Capacity
@@ -74,8 +72,8 @@ namespace RFIDP2P3_API.Controllers
         public ActionResult<string> Upload([FromForm] IFormFile file, [FromQuery] string? UID)
         {
             var validation = FileHelper.ValidateFile(
-                file, 
-                maxSizeInMb: 5, 
+                file,
+                maxSizeInMb: 5,
                 allowedExtensions: new[] { ".xls", ".xlsx" }
             );
 
@@ -136,7 +134,7 @@ namespace RFIDP2P3_API.Controllers
 
                         var dataTable = dataSet.Tables[0];
 
-                        string[] expectedHeaders = { "Periode", "Line Code", "Month", "Shift", "Advance", "Mandatory", "Overtime HOT" };
+                        string[] expectedHeaders = { "Periode", "Line Code", "Month", "Shift", "Mandatory" };
 
                         foreach (string header in expectedHeaders)
                         {
@@ -150,9 +148,7 @@ namespace RFIDP2P3_API.Controllers
                             string lineCode = row[1]?.ToString()?.Trim();
                             string bulanProduksi = row[2]?.ToString()?.Trim();
                             string shiftStr = row[3]?.ToString()?.Trim();
-                            string advanceStr = row[4]?.ToString()?.Trim();
-                            string mandatoryStr = row[5]?.ToString()?.Trim();
-                            string overtimeStr = row[6]?.ToString()?.Trim();
+                            string mandatoryStr = row[4]?.ToString()?.Trim();
 
                             if (string.IsNullOrEmpty(periodeStr) && string.IsNullOrEmpty(lineCode))
                                 continue;
@@ -204,14 +200,6 @@ namespace RFIDP2P3_API.Controllers
                                 }
                             }
 
-                            int advanceVal = 0;
-                            if (!string.IsNullOrEmpty(advanceStr) && !int.TryParse(advanceStr, out advanceVal))
-                                errorLogs.Add($"Row {rowCount}: Advance must be a number.");
-
-                            int overtimeVal = 0;
-                            if (!string.IsNullOrEmpty(overtimeStr) && !int.TryParse(overtimeStr, out overtimeVal))
-                                errorLogs.Add($"Row {rowCount}: Overtime HOT must be a number.");
-
                             int offsetN = 0;
                             if (!string.IsNullOrEmpty(bulanProduksi))
                             {
@@ -235,9 +223,9 @@ namespace RFIDP2P3_API.Controllers
                                 {
                                     Line = lineCode,
                                     OffsetN = offsetN,
-                                    Advance = advanceVal,
+                                    Advance = 0,
                                     Mandatory = mandatoryVal,
-                                    OvertimeHot = overtimeVal
+                                    OvertimeHot = 0
                                 });
                             }
                     
@@ -262,7 +250,7 @@ namespace RFIDP2P3_API.Controllers
 
                 if (uploadData.Count == 0)
                     return BadRequest("No valid data available to process.");
-                
+
                 string inputJson = System.Text.Json.JsonSerializer.Serialize(uploadData);
                 string currentUser = string.IsNullOrEmpty(UID) ? "SystemUpload" : UID;
                 string spRemarks = "";
@@ -445,7 +433,7 @@ namespace RFIDP2P3_API.Controllers
                     var worksheet = workbook.Worksheets.Add("Template_Parameter");
 
                     string[] headers = {
-                        "Periode", "Line Code", "Month", "Shift", "Advance", "Mandatory", "Overtime HOT"
+                        "Periode", "Line Code", "Month", "Shift", "Mandatory"
                     };
 
                     for (int i = 0; i < headers.Length; i++)
@@ -477,15 +465,12 @@ namespace RFIDP2P3_API.Controllers
                         worksheet.Cell(currentRow, 3).Value = displayBulan;
                         worksheet.Cell(currentRow, 4).Value = $"{shift}";
 
-                        worksheet.Cell(currentRow, 5).Value = 0;
-                        worksheet.Cell(currentRow, 7).Value = 0;
-
                         bool isAssy = lineCode.StartsWith("K", StringComparison.OrdinalIgnoreCase);
 
                         string lineTypeKey = isAssy ? "Assy" : "Machining";
                         string optionKey = $"{lineTypeKey}_{shift}";
 
-                        var mandatoryCell = worksheet.Cell(currentRow, 6);
+                        var mandatoryCell = worksheet.Cell(currentRow, 5);
 
                         if (mandatoryOptionsMap.TryGetValue(optionKey, out var config) && config.Items.Count > 0)
                         {
@@ -514,7 +499,7 @@ namespace RFIDP2P3_API.Controllers
                             mandatoryCell.Value = 0;
                         }
 
-                        var inputCells = worksheet.Range(currentRow, 5, currentRow, 7);
+                        var inputCells = worksheet.Range(currentRow, 5, currentRow, 5);
                         inputCells.Style.Fill.BackgroundColor = XLColor.LightYellow;
                         inputCells.Style.Protection.SetLocked(false);
 
@@ -523,6 +508,7 @@ namespace RFIDP2P3_API.Controllers
 
                     worksheet.Protect("Admin-ICS");
                     worksheet.Columns().AdjustToContents();
+
                     using (var stream = new MemoryStream())
                     {
                         workbook.SaveAs(stream);
@@ -533,7 +519,7 @@ namespace RFIDP2P3_API.Controllers
             }
             catch (Exception ex)
             {
-                return BadRequest($"Error generating template: {ex.Message}");
+                return BadRequest($"Error generating template.");
             }
         }
     }

@@ -390,7 +390,7 @@ namespace RFIDP2P3_API.Controllers
             }
             catch (Exception e)
             { 
-                return Ok(new { Remarks = "Internal Server Error " + e.Message}); 
+                return Ok(new { Remarks = "Internal Server Error."});
             }
         }
 
