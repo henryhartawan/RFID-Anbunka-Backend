@@ -55,7 +55,7 @@ namespace RFIDP2P3_API.Controllers
         }
 
         [HttpPost]
-        public ActionResult<IEnumerable<DN>> Sync(DN dn)
+        public ActionResult<IEnumerable<TN>> Sync(TN dn)
         {
             using (SqlConnection conn = new SqlConnection(_configuration))
             using (SqlCommand cmd = new SqlCommand("sp_Sync_To_EDN_TN", conn))
@@ -65,6 +65,7 @@ namespace RFIDP2P3_API.Controllers
 
                 cmd.Parameters.Add(new("@Periode", dn.Periode));
                 cmd.Parameters.Add(new("@Supplier_Code", dn.Supplier_Code));
+                cmd.Parameters.Add(new("@TN_No", dn.TN_No));
                 cmd.Parameters.Add(new("@UserLogin", dn.UserLogin));
 
                 conn.Open();

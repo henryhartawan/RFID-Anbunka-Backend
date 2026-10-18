@@ -13,6 +13,8 @@
         public string? TotalPartVolume { get; set; }
         public string? Remarks { get; set; }
         public string? UserLogin { get; set; }
+        public string? TN_No { get; set; }
+        public string? Periode { get; set; }
         public List<SOPart>? SOParts { get; set; }
     }
 }

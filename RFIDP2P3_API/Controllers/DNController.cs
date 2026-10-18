@@ -65,6 +65,7 @@ namespace RFIDP2P3_API.Controllers
 
                 cmd.Parameters.Add(new("@Periode", dn.Periode));
                 cmd.Parameters.Add(new("@Supplier_Code", dn.Supplier_Code));
+                cmd.Parameters.Add(new("@DN_No", dn.DN_No));
                 cmd.Parameters.Add(new("@UserLogin", dn.UserLogin));
 
                 conn.Open();

@@ -167,6 +167,7 @@ namespace RFIDP2P3_API.Controllers
         {
             string now = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
             string idStr = "";
+            string potype = "";
 
             using (SqlConnection conn = new SqlConnection(_configuration))
             using (SqlCommand cmd = new SqlCommand("sp_Submit_T_SO", conn))
@@ -192,11 +193,20 @@ namespace RFIDP2P3_API.Controllers
                 cmd.Parameters.Add(new("@Qty_Order", SqlDbType.VarChar));
                 cmd.Parameters.Add(new("@QtyPCS", SqlDbType.VarChar));
                 cmd.Parameters.Add(new("@Volume", SqlDbType.VarChar));
+                cmd.Parameters.Add(new("@TN_No", SqlDbType.VarChar, 16));
+                cmd.Parameters.Add(new("@PO_Type", SqlDbType.VarChar, 3));
+                cmd.Parameters.Add(new("@PO_No", SqlDbType.VarChar, 10));
                 cmd.Parameters.Add(new("@EntryDate", SqlDbType.VarChar, 20));
                 cmd.Parameters.Add(new("@UserLogin", SqlDbType.VarChar, 50));
 
                 foreach (var parts in so.SOParts)
                 {
+                    if (potype != parts.PO_Type)
+                    {
+                        idStr = "";
+                        potype = parts.PO_Type;
+                    }
+
                     cmd.Parameters["@SO_No"].Value = idStr;
                     cmd.Parameters["@LineOrderCode"].Value = so.Line;
                     cmd.Parameters["@SupplierCode"].Value = so.Supplier;
@@ -214,6 +224,9 @@ namespace RFIDP2P3_API.Controllers
                     cmd.Parameters["@Qty_Order"].Value = parts.Qty_Order;
                     cmd.Parameters["@QtyPCS"].Value = parts.QtyPCS;
                     cmd.Parameters["@Volume"].Value = parts.Volume;
+                    cmd.Parameters["@TN_No"].Value = so.TN_No;
+                    cmd.Parameters["@PO_Type"].Value = parts.PO_Type;
+                    cmd.Parameters["@PO_No"].Value = parts.PO_No;
                     cmd.Parameters["@EntryDate"].Value = now;
                     cmd.Parameters["@UserLogin"].Value = so.UserLogin;
 
@@ -236,7 +249,7 @@ namespace RFIDP2P3_API.Controllers
         }
 
         [HttpPost]
-        public ActionResult<IEnumerable<Dictionary<string, object>>> INQ()
+        public ActionResult<IEnumerable<Dictionary<string, object>>> INQ(SO so)
         {
             var dt = new DataTable();
 
@@ -244,6 +257,44 @@ namespace RFIDP2P3_API.Controllers
             using (SqlCommand cmd = new SqlCommand("sp_Inq_T_SO", conn))
             {
                 cmd.CommandType = CommandType.StoredProcedure;
+                cmd.Parameters.Add(new("@Periode", so.Periode));
+                conn.Open();
+
+                using (var da = new SqlDataAdapter(cmd))
+                {
+                    da.Fill(dt);
+                }
+
+                conn.Close();
+            }
+
+            var result = new List<Dictionary<string, object>>();
+
+            foreach (DataRow row in dt.Rows)
+            {
+                var dict = new Dictionary<string, object>();
+                foreach (DataColumn col in dt.Columns)
+                {
+                    dict[col.ColumnName] = row[col];
+                }
+                result.Add(dict);
+            }
+
+            return result;
+        }
+
+        [HttpPost]
+        public ActionResult<IEnumerable<Dictionary<string, object>>> INQTN(SO so)
+        {
+            var dt = new DataTable();
+
+            using (SqlConnection conn = new SqlConnection(_configuration))
+            using (SqlCommand cmd = new SqlCommand("sp_Inq_SO_DN_TN", conn))
+            {
+                cmd.CommandType = CommandType.StoredProcedure;
+                cmd.Parameters.Add(new("@Delivery_Date", so.ArrivalDate));
+                cmd.Parameters.Add(new("@Route", so.Route));
+                cmd.Parameters.Add(new("@CycleIssue", so.Cycle));
                 conn.Open();
 
                 using (var da = new SqlDataAdapter(cmd))

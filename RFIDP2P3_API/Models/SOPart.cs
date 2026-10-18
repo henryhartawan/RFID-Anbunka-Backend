@@ -10,5 +10,7 @@
         public string? Qty_Order { get; set; }
         public string? QtyPCS { get; set; }
         public string? Volume { get; set; }
+        public string? PO_Type { get; set; }
+        public string? PO_No { get; set; }
     }
 }

@@ -88,5 +88,25 @@ namespace RFIDP2P3_API.Controllers
                 }
             }
         }
+
+        [HttpPost]
+        public ActionResult<IEnumerable<Heijunka>> DEL(Heijunka heijunka)
+        {
+            using (SqlConnection conn = new SqlConnection(_configuration))
+            using (SqlCommand cmd = new SqlCommand("sp_Delete_T_Calc_Order_Heijunka", conn))
+            {
+                cmd.CommandType = CommandType.StoredProcedure;
+                cmd.Parameters.Add("@Remarks", SqlDbType.VarChar, 100).Direction = ParameterDirection.Output;
+
+                cmd.Parameters.Add(new("@Periode_ID", heijunka.UploadDate));
+
+                conn.Open();
+                cmd.ExecuteNonQuery();
+                remarks = Convert.ToString(cmd.Parameters["@Remarks"].Value);
+                conn.Close();
+            }
+            if (remarks != "") return BadRequest(remarks);
+            else return Ok("success");
+        }
     }
 }

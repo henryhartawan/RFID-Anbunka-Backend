@@ -85,34 +85,6 @@ namespace RFIDP2P3_API.Controllers
             ExcelPackage.LicenseContext = LicenseContext.NonCommercial;
             using (var package = new ExcelPackage())
             {
-                var ws = package.Workbook.Worksheets.Add("Packing Instruction");
-                var range = ws.Cells["A:R"];
-
-                ws.Column(1).Width = 1;
-                ws.Column(2).Width = 5.15;
-                ws.Column(3).Width = 16.4;
-                ws.Column(4).Width = 8.4;
-                ws.Column(5).Width = 8.6;
-                ws.Column(6).Width = 15.15;
-                ws.Column(7).Width = 14.75;
-                ws.Column(8).Width = 14.4;
-                ws.Column(9).Width = 7.6;
-                ws.Column(10).Width = 8.15;
-                ws.Column(11).Width = 10.85;
-                ws.Column(12).Width = 9.75;
-                ws.Column(13).Width = 12.41;
-                ws.Column(14).Width = 6.75;
-                ws.Column(15).Width = 10.25;
-                ws.Column(16).Width = 9.85;
-                ws.Column(17).Width = 5.85;
-                ws.Column(18).Width = 5.15;
-
-                range.Style.Fill.PatternType = ExcelFillStyle.Solid;
-                range.Style.Fill.BackgroundColor.SetColor(ColorTranslator.FromHtml("#FFFFFF"));
-
-                var logoPath = Path.Combine(_env.WebRootPath, "img", "logo.png");
-                var fileInfo = new FileInfo(logoPath);
-
                 int rr = 1;
                 string sup = "";
                 string route = "";
@@ -129,6 +101,7 @@ namespace RFIDP2P3_API.Controllers
                 string dns = "";
                 int page = 0;
                 int tot = 0;
+                var listTot = new Dictionary<string, int>();
                 int no = 0;
                 int skid = 0;
                 int box = 0;
@@ -136,12 +109,21 @@ namespace RFIDP2P3_API.Controllers
                 for (int r = 0; r < dt.Rows.Count; r++)
                 {
                     if (sup != dt.Rows[r][0].ToString() || route != dt.Rows[r][2].ToString() ||
-                        orderDate != dt.Rows[r][3].ToString() ||  orderTime != dt.Rows[r][4].ToString() ||
+                        orderDate != dt.Rows[r][3].ToString() || orderTime != dt.Rows[r][4].ToString() ||
                         cycleIssue != dt.Rows[r][5].ToString() || delvDate != dt.Rows[r][6].ToString() ||
                         delvTime != dt.Rows[r][7].ToString() || cycleArr != dt.Rows[r][8].ToString() ||
                         piNo != dt.Rows[r][9].ToString() || poNo != dt.Rows[r][10].ToString() ||
                         dock != dt.Rows[r][11].ToString())
                     {
+                        if (sup != dt.Rows[r][0].ToString())
+                        {
+                            if (sup != "")
+                            {
+                                listTot[sup] = tot;
+                            }
+                            tot = 0;
+                        }
+
                         sup = dt.Rows[r][0].ToString();
                         route = dt.Rows[r][2].ToString();
                         orderDate = dt.Rows[r][3].ToString();
@@ -156,6 +138,7 @@ namespace RFIDP2P3_API.Controllers
                         tot++;
                     }
                 }
+                listTot[sup] = tot;
 
                 sup = "";
                 route = "";
@@ -168,6 +151,12 @@ namespace RFIDP2P3_API.Controllers
                 piNo = "";
                 poNo = "";
                 dock = "";
+
+                var ws = package.Workbook.Worksheets.Add(dt.Rows[0][0].ToString() + " - " + dt.Rows[0][1].ToString());
+                var range = ws.Cells["A:R"];
+                var logoPath = Path.Combine(_env.WebRootPath, "img", "logo.png");
+                var fileInfo = new FileInfo(logoPath);
+
                 for (int r = 0; r < dt.Rows.Count; r++)
                 {
                     if (sup != dt.Rows[r][0].ToString() || route != dt.Rows[r][2].ToString() || 
@@ -233,6 +222,39 @@ namespace RFIDP2P3_API.Controllers
                                 conn.Close();
                             }
                             pino = "";
+                        }
+
+                        if (sup != dt.Rows[r][0].ToString())
+                        {
+                            if (sup != "")
+                            {
+                                ws = package.Workbook.Worksheets.Add(dt.Rows[r][0].ToString() + " - " +dt.Rows[r][1].ToString());
+                            }
+
+                            rr = 1;
+                            page = 0;
+
+                            ws.Column(1).Width = 1;
+                            ws.Column(2).Width = 5.15;
+                            ws.Column(3).Width = 16.4;
+                            ws.Column(4).Width = 8.4;
+                            ws.Column(5).Width = 8.6;
+                            ws.Column(6).Width = 15.15;
+                            ws.Column(7).Width = 14.75;
+                            ws.Column(8).Width = 14.4;
+                            ws.Column(9).Width = 7.6;
+                            ws.Column(10).Width = 8.15;
+                            ws.Column(11).Width = 10.85;
+                            ws.Column(12).Width = 9.75;
+                            ws.Column(13).Width = 12.41;
+                            ws.Column(14).Width = 6.75;
+                            ws.Column(15).Width = 10.25;
+                            ws.Column(16).Width = 9.85;
+                            ws.Column(17).Width = 5.85;
+                            ws.Column(18).Width = 5.15;
+
+                            range.Style.Fill.PatternType = ExcelFillStyle.Solid;
+                            range.Style.Fill.BackgroundColor.SetColor(ColorTranslator.FromHtml("#FFFFFF"));
                         }
 
                         sup = dt.Rows[r][0].ToString();
@@ -353,7 +375,7 @@ namespace RFIDP2P3_API.Controllers
 
                         ws.Cells["O" + rr.ToString()].Value = "PAGE";
                         ws.Cells["P" + rr.ToString() + ":R" + rr.ToString()].Merge = true;
-                        ws.Cells["P" + rr.ToString()].Value = ": " + page.ToString() + " / " + tot.ToString();
+                        ws.Cells["P" + rr.ToString()].Value = ": " + page.ToString() + " / " + listTot[sup].ToString();
 
 
                         rr++;
