@@ -289,6 +289,12 @@ namespace RFIDP2P3_API.Controllers
 								ViewValue = sdr["FinishGoods"].ToString(),
 								Model = sdr["Model"].ToString()
 							}); break;
+						case "ModelGroup":
+							ContainerObj.Add(new DropDown
+							{
+								IdValue = sdr["EngineGrouping"].ToString(),
+								ViewValue = sdr["EngineGrouping"].ToString()
+							}); break;
                     }
 				}
 				conn.Close();
